@@ -1,6 +1,6 @@
 // Bump this whenever you deploy changes to shell files below — it forces
 // clients to fetch fresh copies instead of serving stale cached versions.
-const CACHE_VERSION = "v7";
+const CACHE_VERSION = "v8";
 const CACHE_NAME = `chip-shop-shell-${CACHE_VERSION}`;
 
 const SHELL_FILES = [

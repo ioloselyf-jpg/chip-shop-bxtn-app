@@ -41,6 +41,12 @@
 </nav>
 
 <main>
+  <div id="tonight-banner" class="tonight-banner" style="display:none;">
+    <div class="halftone halftone--br"></div>
+    <span class="tonight-badge">Tonight</span>
+    <div id="tonight-list"></div>
+  </div>
+
   <nav class="home-grid">
     <a class="home-tile" href="/whats-on.html">
       <span class="icon">📋</span>
@@ -85,7 +91,9 @@
 <footer class="app-footer">&copy; <span id="year"></span> Chip Shop Bxtn</footer>
 
 <script type="module">
-  import { applyTheme } from "/js/firebase-init.js";
+  import { db, applyTheme } from "/js/firebase-init.js";
+  import { collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+
   applyTheme();
   document.getElementById("year").textContent = new Date().getFullYear();
 
@@ -98,6 +106,70 @@
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+  }
+
+  // --- "Tonight at Chip Shop" banner ---------------------------------------
+  // Live-queries specials scheduled for today's device/browser-local date
+  // (matching how reserve.js/staff.js compute "today" elsewhere in the app)
+  // and shows them right on the homepage — no separate staff action beyond
+  // setting a date when they add/edit a special in the What's On tab.
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function todayISO() {
+    const d = new Date();
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str ?? "";
+    return div.innerHTML;
+  }
+
+  const bannerEl = document.getElementById("tonight-banner");
+  const listEl = document.getElementById("tonight-list");
+
+  try {
+    // Two equality filters (no orderBy) — avoids needing a composite Firestore
+    // index, same reasoning as whats-on.js. Multiple specials can be scheduled
+    // for the same date, so all of today's active ones are shown, sorted
+    // client-side by 'order' like the What's On page.
+    const tonightQuery = query(
+      collection(db, "specials"),
+      where("active", "==", true),
+      where("date", "==", todayISO())
+    );
+
+    onSnapshot(
+      tonightQuery,
+      (snap) => {
+        if (snap.empty) {
+          bannerEl.style.display = "none";
+          listEl.innerHTML = "";
+          return;
+        }
+        const specials = snap.docs
+          .map((d) => d.data())
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        listEl.innerHTML = specials
+          .map(
+            (s) => `
+          <div class="tonight-item">
+            <h3>${escapeHtml(s.title)}</h3>
+            <p>${escapeHtml(s.description)}</p>
+            ${s.weekLabel ? `<p class="hint">${escapeHtml(s.weekLabel)}</p>` : ""}
+          </div>`
+          )
+          .join("");
+        bannerEl.style.display = "block";
+      },
+      (err) => {
+        console.error(err);
+        bannerEl.style.display = "none";
+      }
+    );
+  } catch (err) {
+    console.error(err);
+    bannerEl.style.display = "none";
   }
 </script>
 </body>

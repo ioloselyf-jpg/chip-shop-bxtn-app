@@ -124,6 +124,49 @@ main {
 .home-tile .title { font-weight: 600; margin-bottom: 2px; }
 .home-tile .desc { font-size: 0.85rem; color: var(--color-muted); }
 
+/* "Tonight at Chip Shop" homepage banner — only rendered when a special is
+   scheduled for today. Deliberately fixed black/red/white like the hero
+   zone (see brand hero design system below) rather than the light --color-*
+   card palette, so it reads as a poster flash-alert, not just another card. */
+.tonight-banner {
+  position: relative;
+  background: #000;
+  color: #fff;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius);
+  padding: 20px 18px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  isolation: isolate;
+}
+.tonight-banner .halftone { opacity: 0.5; }
+.tonight-badge {
+  display: inline-block;
+  background: var(--color-primary);
+  color: #fff;
+  font-family: "Anton", var(--font-heading);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.95rem;
+  padding: 5px 14px;
+  transform: rotate(-3deg);
+  margin: 0 0 12px;
+}
+.tonight-item + .tonight-item {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255,255,255,0.18);
+}
+.tonight-item h3 {
+  font-family: "Anton", var(--font-heading);
+  text-transform: uppercase;
+  font-weight: 400;
+  font-size: 1.4rem;
+  margin: 0 0 4px;
+}
+.tonight-item p { margin: 0; color: #e6e6e6; font-size: 0.9rem; }
+.tonight-item .hint { color: #b0b0b0; margin-top: 4px; }
+
 .btn {
   display: inline-block;
   border: none;

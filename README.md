@@ -332,7 +332,7 @@ chip-shop-bxtn-deploy.zip            Ready-to-upload deploy bundle — see setup
 
 ## Data model (Firestore)
 
-- `specials/{id}` — `{ title, description, weekLabel, active, order, updatedAt }`
+- `specials/{id}` — `{ title, description, weekLabel, date, active, order, updatedAt }` — `date` is an optional `"YYYY-MM-DD"` string (same format as `reservations.date`); when it matches today's local date, the special also appears in the "Tonight at Chip Shop" banner on the homepage (`index.html`)
 - `customers/{uid}` — `{ name, email, phone, stamps, rewardsAvailable, totalStampsEver, createdAt }`
 - `reservations/{id}` — `{ name, email, phone, partySize, date, time, notes, status, createdAt }`
 - `slotCounts/{date_time}` — `{ date, time, covers }` — aggregate headcount per slot, used for the capacity check

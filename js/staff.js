@@ -276,12 +276,15 @@ function startSpecialsListener() {
     listEl.innerHTML = snap.docs
       .map((d) => {
         const s = d.data();
+        const isToday = s.date && s.date === todayISO();
         return `
         <div class="card">
           <span class="badge" style="background:${s.active ? "var(--color-accent)" : "var(--color-border)"}; color:${s.active ? "#fff" : "var(--color-text)"};">${s.active ? "Live" : "Hidden"}</span>
+          ${isToday ? `<span class="badge" style="background:#000;">Today</span>` : ""}
           <h3>${escapeHtml(s.title)}</h3>
           <p>${escapeHtml(s.description)}</p>
           ${s.weekLabel ? `<p class="hint">${escapeHtml(s.weekLabel)}</p>` : ""}
+          ${s.date ? `<p class="hint">Date: ${escapeHtml(s.date)}</p>` : ""}
           <div style="display:flex; gap:8px;">
             <button class="btn secondary small" data-action="toggle" data-id="${d.id}" data-active="${s.active}">${s.active ? "Hide" : "Show"}</button>
             <button class="btn secondary small" data-action="delete" data-id="${d.id}">Delete</button>
@@ -316,6 +319,7 @@ document.getElementById("add-special-btn").addEventListener("click", async () =>
   const title = document.getElementById("new-title").value.trim();
   const description = document.getElementById("new-desc").value.trim();
   const weekLabel = document.getElementById("new-week").value.trim();
+  const date = document.getElementById("new-date").value;
 
   if (!title || !description) {
     msgEl.innerHTML = `<div class="msg error">Title and description are required.</div>`;
@@ -327,6 +331,7 @@ document.getElementById("add-special-btn").addEventListener("click", async () =>
       title,
       description,
       weekLabel: weekLabel || null,
+      date: date || null,
       active: true,
       order: Date.now(),
       updatedAt: serverTimestamp()
@@ -334,6 +339,7 @@ document.getElementById("add-special-btn").addEventListener("click", async () =>
     document.getElementById("new-title").value = "";
     document.getElementById("new-desc").value = "";
     document.getElementById("new-week").value = "";
+    document.getElementById("new-date").value = "";
     msgEl.innerHTML = `<div class="msg success">Added.</div>`;
   } catch (err) {
     console.error(err);
