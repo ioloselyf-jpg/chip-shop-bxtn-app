@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Book a Table — Chip Shop Bxtn</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#fb0000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<link rel="icon" href="/icons/favicon.png" />
+<link rel="preload" as="image" href="/images/hero-reserve.webp" />
+<link rel="preload" as="font" href="/fonts/Anton-Regular.woff2" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<div class="hero hero--compact" style="background-image:url('/images/hero-reserve.webp');">
+  <div class="hero-top-row">
+    <a class="back-link" href="/index.html" aria-label="Back">←</a>
+  </div>
+  <div class="halftone halftone--tl"></div>
+  <div class="halftone halftone--br"></div>
+  <span class="hero-badge">Chip Shop Bxtn</span>
+  <h1 class="hero-headline">Book A<br />Table</h1>
+  <p class="hero-sub">Reserve your spot</p>
+  <span class="hero-location-tag">Brixton</span>
+</div>
+<div class="torn-edge torn-edge--red"></div>
+<div class="torn-edge" style="margin-top:-6px;"></div>
+<nav class="site-nav">
+  <a class="site-nav-link" href="/index.html">Home</a>
+  <a class="site-nav-link" href="/whats-on.html">What's On</a>
+  <a class="site-nav-link" href="/loyalty.html">Loyalty</a>
+  <a class="site-nav-link current" href="/reserve.html">Reserve</a>
+  <a class="site-nav-link" href="/about.html">About</a>
+  <a class="site-nav-link" href="/index.html#contact">Contact Us</a>
+</nav>
+
+<main>
+  <div id="booking-view">
+    <form id="reserve-form" class="card">
+      <label for="res-date">Date</label>
+      <input id="res-date" type="date" required />
+
+      <label for="res-time">Time</label>
+      <select id="res-time" required disabled>
+        <option value="">Choose a date first</option>
+      </select>
+
+      <label for="res-party">Party size</label>
+      <select id="res-party" required></select>
+
+      <label for="res-name">Name</label>
+      <input id="res-name" type="text" required autocomplete="name" />
+
+      <label for="res-phone">Phone</label>
+      <input id="res-phone" type="tel" required autocomplete="tel" />
+
+      <label for="res-email">Email</label>
+      <input id="res-email" type="email" required autocomplete="email" />
+
+      <label for="res-notes">Notes <span class="hint" style="display:inline">(optional — allergies, high chair, etc.)</span></label>
+      <textarea id="res-notes" rows="2"></textarea>
+
+      <div id="reserve-msg"></div>
+
+      <button class="btn block" style="margin-top:16px;" type="submit">Book Table</button>
+    </form>
+  </div>
+
+  <div id="confirmation-view" class="card" style="display:none;">
+    <h2>✅ Table booked!</h2>
+    <p id="confirmation-text"></p>
+    <p class="hint">This app doesn't send a confirmation email yet — please screenshot this for your records. If you need to change or cancel, call the shop directly.</p>
+    <a class="btn block" href="/index.html">Back to Home</a>
+  </div>
+</main>
+
+<footer class="app-footer">&copy; <span id="year"></span> Chip Shop Bxtn</footer>
+
+<script type="module" src="/js/reserve.js"></script>
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>

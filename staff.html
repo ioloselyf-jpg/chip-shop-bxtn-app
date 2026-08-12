@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Staff — Chip Shop Bxtn</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#fb0000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<link rel="icon" href="/icons/favicon.png" />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<header class="app-header">
+  <a class="back-link" href="/index.html" aria-label="Back">←</a>
+  <h1>Staff Area</h1>
+</header>
+
+<main>
+  <!-- PIN gate -->
+  <div id="pin-view">
+    <div class="card">
+      <p style="margin-top:0; text-align:center;">Enter staff PIN</p>
+      <div class="pin-display" id="pin-display"></div>
+      <div class="pin-pad" id="pin-pad">
+        <button type="button" data-key="1">1</button>
+        <button type="button" data-key="2">2</button>
+        <button type="button" data-key="3">3</button>
+        <button type="button" data-key="4">4</button>
+        <button type="button" data-key="5">5</button>
+        <button type="button" data-key="6">6</button>
+        <button type="button" data-key="7">7</button>
+        <button type="button" data-key="8">8</button>
+        <button type="button" data-key="9">9</button>
+        <button type="button" data-key="clear">C</button>
+        <button type="button" data-key="0">0</button>
+        <button type="button" data-key="back">⌫</button>
+      </div>
+      <button class="btn block" id="pin-submit">Unlock</button>
+      <div id="pin-msg"></div>
+    </div>
+  </div>
+
+  <!-- Staff dashboard -->
+  <div id="dashboard-view" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; gap:8px;">
+      <span id="signed-in-as" class="hint" style="word-break:break-all;"></span>
+      <button class="btn secondary small" id="lock-btn" style="flex-shrink:0;">🔒 Lock</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="stamps">Add Stamp</button>
+      <button class="tab-btn" data-tab="specials">What's On</button>
+      <button class="tab-btn" data-tab="reservations">Reservations</button>
+    </div>
+
+    <!-- Add Stamp -->
+    <div id="stamps-panel" class="tab-panel active">
+      <div class="card">
+        <label for="lookup-input">Find customer by email or phone</label>
+        <input id="lookup-input" type="text" placeholder="e.g. jane@email.com or 07..." />
+        <button class="btn block" id="lookup-btn" style="margin-top:10px;">Search</button>
+        <div id="lookup-msg"></div>
+      </div>
+
+      <div id="customer-result" class="card" style="display:none;">
+        <p style="margin-top:0;">
+          <strong id="result-name"></strong><br />
+          <span class="hint" id="result-contact"></span>
+        </p>
+        <p>Stamps: <strong id="result-stamps"></strong> / <span id="result-required"></span></p>
+        <p id="result-rewards"></p>
+        <button class="btn block" id="add-stamp-btn">+ Add Stamp</button>
+        <button class="btn accent block" id="redeem-btn" style="margin-top:10px; display:none;">Redeem Free Portion</button>
+        <div id="action-msg"></div>
+      </div>
+    </div>
+
+    <!-- Specials editor -->
+    <div id="specials-panel" class="tab-panel">
+      <div class="card">
+        <h3 style="margin-top:0;">Add a special / event</h3>
+        <label for="new-title">Title</label>
+        <input id="new-title" type="text" />
+        <label for="new-desc">Description</label>
+        <textarea id="new-desc" rows="2"></textarea>
+        <label for="new-week">Week label <span class="hint" style="display:inline">(optional, e.g. "This week")</span></label>
+        <input id="new-week" type="text" placeholder="This week" />
+        <button class="btn block" id="add-special-btn" style="margin-top:10px;">Add</button>
+        <div id="special-msg"></div>
+      </div>
+      <div id="specials-list"></div>
+    </div>
+
+    <!-- Reservations -->
+    <div id="reservations-panel" class="tab-panel">
+      <div id="reservations-list"><div class="spinner"></div></div>
+    </div>
+  </div>
+</main>
+
+<footer class="app-footer">&copy; <span id="year"></span> Chip Shop Bxtn</footer>
+
+<script type="module" src="/js/staff.js"></script>
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>

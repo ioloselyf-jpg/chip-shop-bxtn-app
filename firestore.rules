@@ -1,0 +1,104 @@
+rules_version = '2';
+
+// ---------------------------------------------------------------------------
+// Paste this into Firebase Console > Firestore Database > Rules (or deploy
+// with the Firebase CLI: `firebase deploy --only firestore:rules`).
+//
+// IMPORTANT: the staff email below must exactly match config/site-config.json
+// -> staff.staffAuthEmail. If you change one, change both.
+//
+// Trust model for this MVP (no server/Cloud Functions — everything is
+// enforced here, in these rules, since the app is 100% static/client-side):
+//   - "specials" (What's On)  : public read, staff-only write.
+//   - "customers" (loyalty)   : a customer can read/edit their own profile,
+//                                 but only staff can change stamps/rewards.
+//   - "reservations"          : anyone can create a booking (no login
+//                                 required to book a table), but only staff
+//                                 can browse the list. Field checks below are
+//                                 sanity bounds, not a substitute for a real
+//                                 backend — a determined bad actor could still
+//                                 script bogus bookings. For stronger abuse
+//                                 protection later, add Firebase App Check.
+//   - "slotCounts"            : aggregate headcount per time slot, used for
+//                                 overbooking prevention. Contains no PII.
+// ---------------------------------------------------------------------------
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isStaff() {
+      // .lower() on both sides deliberately: Firebase Auth's sign-in email
+      // lookup is case-insensitive, but the account's STORED email (and
+      // what shows up here as request.auth.token.email) keeps whatever
+      // casing was used when the account was created in the console.
+      // String equality in these rules is case-sensitive, so a login that
+      // visibly succeeds could still make isStaff() silently and
+      // permanently false here if the console account's casing doesn't
+      // exactly match this hardcoded string. Comparing lowercased on both
+      // sides makes this robust regardless of how the account was created.
+      return request.auth != null &&
+        request.auth.token.email.lower() == "iolo@chipshopbxtn.co.uk";
+    }
+
+    // --- What's On This Week ------------------------------------------
+    match /specials/{specialId} {
+      allow read: if true;
+      allow create, update, delete: if isStaff();
+    }
+
+    // --- Loyalty customers ----------------------------------------------
+    match /customers/{uid} {
+      // Split get/list deliberately: a customer fetching their OWN profile
+      // (loyalty.html, via doc(db,"customers",uid) — always a `get`, never a
+      // query) is safe to allow via the uid match. Staff searching by
+      // email/phone (staff.js) is a `list` query that could return a
+      // document with ANY uid — Firestore's list-safety check evaluates the
+      // rule against the query as constrained, not just "is this user
+      // staff", so an isStaff() || auth.uid==uid rule on a combined `read`
+      // can reject list queries even for staff. Keeping `list` as a pure,
+      // unconditional isStaff() (matching the pattern already used for
+      // reservations/specials/slotCounts) avoids that.
+      allow get: if isStaff() || (request.auth != null && request.auth.uid == uid);
+      allow list: if isStaff();
+
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.stamps == 0
+        && request.resource.data.rewardsAvailable == 0;
+
+      // Customers can update their own doc, but never the stamp/reward
+      // counters — only the staff PIN view is allowed to change those.
+      allow update: if isStaff() || (
+        request.auth != null &&
+        request.auth.uid == uid &&
+        request.resource.data.stamps == resource.data.stamps &&
+        request.resource.data.rewardsAvailable == resource.data.rewardsAvailable &&
+        request.resource.data.totalStampsEver == resource.data.totalStampsEver
+      );
+
+      allow delete: if false;
+    }
+
+    // --- Reservations ------------------------------------------------
+    match /reservations/{resId} {
+      allow read, update, delete: if isStaff();
+
+      allow create: if request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() < 200
+        && request.resource.data.date is string
+        && request.resource.data.time is string
+        && request.resource.data.partySize is int
+        && request.resource.data.partySize > 0
+        && request.resource.data.partySize <= 20;
+    }
+
+    // --- Per-slot covers count (capacity check) -------------------------
+    match /slotCounts/{slotId} {
+      allow read: if true;
+      allow write: if request.resource.data.covers is int
+        && request.resource.data.covers >= 0
+        && request.resource.data.covers <= 500;
+    }
+  }
+}

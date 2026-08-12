@@ -1,0 +1,16 @@
+# Build artifacts
+chip-shop-bxtn-deploy.zip
+*.zip
+
+# Claude Code local settings (contains machine-specific data; may include
+# sensitive command history / credentials pasted into permission allowlists)
+.claude/settings.local.json
+
+# OS junk
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editor/local
+*.log
+/tmp/

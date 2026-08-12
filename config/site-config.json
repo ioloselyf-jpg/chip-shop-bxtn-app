@@ -1,0 +1,48 @@
+{
+  "_comment": "Branding, hours, and capacity below are now real (sourced from chipshopbxtn.com and the owner directly, 2026-08-11) — see README.md 'Branding' and 'Opening hours' sections for provenance and how to keep them updated.",
+
+  "shopName": "Chip Shop Bxtn",
+  "tagline": "“Chip Shop is the center of the universe 4 HIP HOP”",
+
+  "theme": {
+    "_comment": "Sourced from chipshopbxtn.com (2026-08-11): pure black/white with red measured directly from the official logo artwork (icons/source/chipshop-logo.png, average ~rgb(251,0,0)). Still trivial to re-theme: change these hex values and swap /icons files. No other code changes needed.",
+    "primaryColor": "#fb0000",
+    "primaryColorDark": "#8a0000",
+    "accentColor": "#fb0000",
+    "backgroundColor": "#ffffff",
+    "textColor": "#0d0d0d",
+    "logoText": "Chip Shop Bxtn"
+  },
+
+  "loyalty": {
+    "stampsRequired": 8,
+    "rewardDescription": "one free regular portion of chips"
+  },
+
+  "reservations": {
+    "_comment": "Real hours from the owner (2026-08-11, Fri/Sat opening time corrected 2026-08-12: now 18:00 not 16:00). Mon/Tue/Wed are closed by default, but the shop sometimes opens for one-off events on those days — for that, add a same-shaped entry to dateOverrides below, keyed by the exact date (e.g. \"2026-12-25\": { \"open\": \"18:00\", \"close\": \"23:00\" }, or { \"closed\": true } to close a normally-open day), then redeploy. 'overnight: true' means the close time is after midnight (the next calendar day) — the reservation slot generator handles this automatically, still applying the same lastSeatingBufferMinutes before that close time.",
+    "openingHours": {
+      "mon": { "closed": true },
+      "tue": { "closed": true },
+      "wed": { "closed": true },
+      "thu": { "open": "18:00", "close": "00:00", "overnight": true },
+      "fri": { "open": "18:00", "close": "01:00", "overnight": true },
+      "sat": { "open": "18:00", "close": "01:00", "overnight": true },
+      "sun": { "open": "18:00", "close": "00:00", "overnight": true }
+    },
+    "dateOverrides": {
+      "2026-08-12": { "open": "18:00", "close": "00:00", "overnight": true }
+    },
+    "slotIntervalMinutes": 30,
+    "lastSeatingBufferMinutes": 30,
+    "maxPartySize": 20,
+    "capacityPerSlotCovers": 80,
+    "leadTimeMinutes": 30,
+    "maxAdvanceBookingDays": 30
+  },
+
+  "staff": {
+    "_comment": "This is the Firebase Auth email used behind the scenes for the staff PIN login. It is not shown to customers. Create this exact user in Firebase Auth and set its password to the PIN staff will type in. See README.",
+    "staffAuthEmail": "iolo@chipshopbxtn.co.uk"
+  }
+}

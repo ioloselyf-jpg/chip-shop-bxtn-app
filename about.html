@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>About — Chip Shop Bxtn</title>
+<meta name="description" content="The story behind Chip Shop Bxtn — Brixton's home for hip-hop culture." />
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#fb0000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<link rel="icon" href="/icons/favicon.png" />
+<link rel="preload" as="image" href="/images/hero-home.webp" />
+<link rel="preload" as="font" href="/fonts/Anton-Regular.woff2" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<div class="hero hero--compact" style="background-image:url('/images/hero-home.webp');">
+  <div class="hero-top-row">
+    <a class="back-link" href="/index.html" aria-label="Back">←</a>
+  </div>
+  <div class="halftone halftone--tl"></div>
+  <div class="halftone halftone--br"></div>
+  <span class="hero-badge">Chip Shop Bxtn</span>
+  <h1 class="hero-headline">About<br />Us</h1>
+  <p class="hero-sub">Where legends are born and music lives on</p>
+  <span class="hero-location-tag">Brixton</span>
+</div>
+<div class="torn-edge torn-edge--red"></div>
+<div class="torn-edge" style="margin-top:-6px;"></div>
+<nav class="site-nav">
+  <a class="site-nav-link" href="/index.html">Home</a>
+  <a class="site-nav-link" href="/whats-on.html">What's On</a>
+  <a class="site-nav-link" href="/loyalty.html">Loyalty</a>
+  <a class="site-nav-link" href="/reserve.html">Reserve</a>
+  <a class="site-nav-link current" href="/about.html">About</a>
+  <a class="site-nav-link" href="/index.html#contact">Contact Us</a>
+</nav>
+
+<main>
+  <div class="card">
+    <p>Nestled in the heart of Brixton, the legendary Chip Shop has long been the epicenter of hip-hop culture in South London. Housed within the historic walls of the Old Black Cultural Art Centre, this iconic venue has witnessed countless moments of musical magic and seen some of the biggest legends in the hip-hop scene bless the mic</p>
+    <p>From the gritty, underground roots of the genre to the cutting-edge sounds of today, Chip Shop has curated an unrivaled lineup of performers who have graced the space. The echoes of legendary acts such as Chuck D, Ice T, B-Real, Run DMC, Skinnyman, KRS-One, Klashnekoff, Talib Kweli, Rag'n'Bone Man, Keith Murray &amp; Mobb Deep still reverberate within its walls, leaving an indelible mark on Brixton's vibrant musical legacy.</p>
+    <p>Beyond the music, Chip Shop has cultivated an inclusive and electric atmosphere, drawing hip-hop enthusiasts from all walks of life. It's not just a venue; it's a cultural institution that champions diversity, creativity, and the unifying power of music.</p>
+    <p>So, whether you're a die-hard hip-hop head or just looking for a taste of Brixton's rich cultural tapestry, Chip Shop is the place where history, rhythm, and community converge. Come join the beat, grab a mic, and experience the heart and soul of Brixton's hip-hop scene at Chip Shop – where legends are born and music lives on.</p>
+  </div>
+</main>
+
+<footer class="app-footer">&copy; <span id="year"></span> Chip Shop Bxtn</footer>
+
+<script type="module">
+  import { applyTheme } from "/js/firebase-init.js";
+  applyTheme();
+  document.getElementById("year").textContent = new Date().getFullYear();
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+  }
+</script>
+</body>
+</html>

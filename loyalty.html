@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Loyalty Card — Chip Shop Bxtn</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#fb0000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<link rel="icon" href="/icons/favicon.png" />
+<link rel="preload" as="image" href="/images/hero-loyalty.webp" />
+<link rel="preload" as="font" href="/fonts/Anton-Regular.woff2" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+<div class="hero hero--compact" style="background-image:url('/images/hero-loyalty.webp');">
+  <div class="hero-top-row">
+    <a class="back-link" href="/index.html" aria-label="Back">←</a>
+  </div>
+  <div class="halftone halftone--tl"></div>
+  <div class="halftone halftone--br"></div>
+  <span class="hero-badge">Chip Shop Bxtn</span>
+  <h1 class="hero-headline">Loyalty<br />Card</h1>
+  <p class="hero-sub">Buy 8, get 1 free</p>
+  <span class="hero-location-tag">Brixton</span>
+</div>
+<div class="torn-edge torn-edge--red"></div>
+<div class="torn-edge" style="margin-top:-6px;"></div>
+<nav class="site-nav">
+  <a class="site-nav-link" href="/index.html">Home</a>
+  <a class="site-nav-link" href="/whats-on.html">What's On</a>
+  <a class="site-nav-link current" href="/loyalty.html">Loyalty</a>
+  <a class="site-nav-link" href="/reserve.html">Reserve</a>
+  <a class="site-nav-link" href="/about.html">About</a>
+  <a class="site-nav-link" href="/index.html#contact">Contact Us</a>
+</nav>
+
+<main>
+  <div id="auth-forms">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="login">Log In</button>
+      <button class="tab-btn" data-tab="signup">Sign Up</button>
+    </div>
+
+    <div id="login-panel" class="tab-panel active card">
+      <form id="login-form">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" required autocomplete="email" />
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" required autocomplete="current-password" />
+        <div id="login-msg"></div>
+        <button class="btn block" style="margin-top:16px;" type="submit">Log In</button>
+      </form>
+    </div>
+
+    <div id="signup-panel" class="tab-panel card">
+      <form id="signup-form">
+        <label for="signup-name">Name</label>
+        <input id="signup-name" type="text" required autocomplete="name" />
+        <label for="signup-phone">Phone <span class="hint" style="display:inline">(so staff can find you at the counter)</span></label>
+        <input id="signup-phone" type="tel" autocomplete="tel" />
+        <label for="signup-email">Email</label>
+        <input id="signup-email" type="email" required autocomplete="email" />
+        <label for="signup-password">Password</label>
+        <input id="signup-password" type="password" required minlength="6" autocomplete="new-password" />
+        <div class="hint">At least 6 characters.</div>
+        <div id="signup-msg"></div>
+        <button class="btn block" style="margin-top:16px;" type="submit">Create Account</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="card-view" style="display:none;">
+    <div id="reward-banner"></div>
+    <div class="card">
+      <p style="margin-top:0;">Hi <strong id="customer-name"></strong> — buy <span id="stamps-required-1"></span>, get 1 free.</p>
+      <div id="stamp-grid" class="stamp-grid"></div>
+      <p id="progress-text" class="hint"></p>
+    </div>
+    <button class="btn secondary block" id="signout-btn">Log Out</button>
+  </div>
+</main>
+
+<footer class="app-footer">&copy; <span id="year"></span> Chip Shop Bxtn</footer>
+
+<script type="module" src="/js/loyalty.js"></script>
+<script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>

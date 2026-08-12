@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "chipshop-static",
+      "runtimeExecutable": "powershell.exe",
+      "runtimeArgs": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "C:\\Users\\Admin\\AppData\\Local\\Temp\\claude\\C--Users-Admin-Desktop-csapp\\4f46cdc0-05ee-48c1-aaed-c0c69d533457\\scratchpad\\server.ps1",
+        "-Port",
+        "8080",
+        "-Root",
+        "C:\\Users\\Admin\\Desktop\\csapp"
+      ],
+      "port": 8080
+    }
+  ]
+}

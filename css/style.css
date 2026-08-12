@@ -1,0 +1,501 @@
+/* ---------------------------------------------------------------------
+   Real Chip Shop Bxtn brand theme, sourced from chipshopbxtn.com
+   (2026-08-10): pure black background, white text, red measured from
+   the official logo artwork (average rgb(251,0,0) sampled from
+   /icons/source/chipshop-logo.png). Headings/body use Helvetica Neue,
+   matching the live site's font stack — a real system font on iOS, so
+   no web-font loading needed.
+   Colors are still CSS variables so re-branding stays a one-file change —
+   either edit the defaults below, or they're overridden at runtime from
+   config/site-config.json (theme.*) via js/firebase-init.js#applyTheme.
+   --------------------------------------------------------------------- */
+:root {
+  /* Tells the browser to render native form-control chrome (the date
+     input's calendar-picker icon, <select> dropdown arrows, scrollbars)
+     to match whichever palette is actually active, instead of always
+     assuming a light background. Without this, that chrome defaults to
+     light-mode assumptions and can render invisible against our dark-mode
+     black inputs — e.g. an unreadable calendar icon on reserve.html,
+     which looks exactly like "the date picker isn't working". Set to
+     "light" here; overridden to "dark" inside the dark-mode media query
+     below, so it always matches --color-bg/--color-text for that mode. */
+  color-scheme: light;
+  --color-primary: #fb0000;
+  --color-primary-dark: #8a0000;
+  --color-accent: #fb0000;
+  --color-bg: #ffffff;
+  --color-text: #0d0d0d;
+  --color-muted: #6b6b6b;
+  --color-card: #fafafa;
+  --color-border: #e0e0e0;
+  --color-success: #2f7a3d;
+  --color-danger: #b3261e;
+  --radius: 14px;
+  --font-heading: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-body: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  display: flex;
+  flex-direction: column;
+}
+
+h1, h2, h3 { font-family: var(--font-heading); line-height: 1.15; margin: 0 0 0.4em; }
+p { line-height: 1.5; }
+a { color: var(--color-primary); }
+
+.app-header {
+  background: var(--color-primary);
+  color: #fff;
+  padding: 14px 16px calc(14px + var(--safe-top));
+  margin-top: calc(var(--safe-top) * -1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.app-header .logo-mark { height: 32px; width: auto; display: block; flex-shrink: 0; }
+.app-header h1 { font-size: 1.15rem; margin: 0; color: #fff; }
+.app-header .back-link {
+  color: #fff;
+  text-decoration: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 4px 6px;
+  margin-left: -6px;
+}
+
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.home-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+}
+.home-tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 18px;
+  text-decoration: none;
+  color: var(--color-text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: transform 0.1s ease;
+}
+.home-tile:active { transform: scale(0.98); }
+.home-tile .icon { font-size: 1.8rem; flex-shrink: 0; }
+.home-tile .title { font-weight: 600; margin-bottom: 2px; }
+.home-tile .desc { font-size: 0.85rem; color: var(--color-muted); }
+
+.btn {
+  display: inline-block;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--color-primary);
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.secondary { background: transparent; color: var(--color-primary); border: 1.5px solid var(--color-primary); }
+.btn.accent { background: #fff; color: var(--color-primary); border: 2px solid var(--color-primary); }
+.btn.block { display: block; width: 100%; }
+.btn.small { padding: 8px 14px; font-size: 0.85rem; }
+
+label { display: block; font-size: 0.85rem; font-weight: 600; margin: 12px 0 4px; }
+input, select, textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--color-card);
+  color: var(--color-text);
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--color-accent); border-color: var(--color-accent); }
+
+.form-row { margin-bottom: 4px; }
+.hint { font-size: 0.78rem; color: var(--color-muted); margin-top: 4px; }
+
+.msg { padding: 12px 14px; border-radius: 10px; font-size: 0.9rem; margin: 12px 0; }
+.msg.error { background: #fdecea; color: var(--color-danger); border: 1px solid #f5c2bd; }
+.msg.success { background: #eaf6ec; color: var(--color-success); border: 1px solid #bfe3c4; }
+.msg.info { background: #fff5df; color: #7a5c00; border: 1px solid #f0dca0; }
+
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.tab-btn {
+  border: 1.5px solid var(--color-border);
+  background: var(--color-card);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--color-text);
+}
+.tab-btn.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.stamp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+.stamp {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px dashed var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  background: var(--color-card);
+}
+.stamp.filled {
+  border: 2px solid var(--color-accent);
+  background: var(--color-accent);
+}
+
+.reward-banner {
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.pin-pad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 280px;
+  margin: 18px auto;
+}
+.pin-pad button {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-card);
+  color: var(--color-text);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+.pin-display {
+  text-align: center;
+  font-size: 1.8rem;
+  letter-spacing: 0.4em;
+  min-height: 2.2rem;
+  font-weight: 700;
+}
+
+table.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+table.data-table th, table.data-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--color-border); }
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.list-item:last-child { border-bottom: none; }
+
+.badge {
+  display: inline-block;
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.spinner {
+  width: 22px; height: 22px;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin: 20px auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.install-hint {
+  font-size: 0.8rem;
+  color: var(--color-muted);
+  background: #fff5df;
+  border: 1px solid #f0dca0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 16px;
+}
+
+footer.app-footer {
+  text-align: center;
+  font-size: 0.72rem;
+  color: var(--color-muted);
+  padding: 20px 16px calc(20px + var(--safe-bottom));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-bg: #000000;
+    --color-text: #ffffff;
+    --color-card: #141414;
+    --color-border: #333333;
+    --color-muted: #a0a0a0;
+  }
+  /* input/select/textarea and .pin-pad button already use var(--color-card)
+     and var(--color-text) in their base rules above, so they pick up the
+     dark palette automatically — no separate override needed here. */
+}
+
+/* ===========================================================================
+   Brand hero design system — torn-paper streetwear look, sourced from
+   chipshopbxtn.com (photos, palette) plus a reference flyer aesthetic:
+   jagged torn-paper edges, a tilted badge, heavy poster type with a hard red
+   offset "misprint" shadow, a hand-drawn-ish divider, and halftone-dot
+   corners. Used only in the hero zone of guest-facing pages (index,
+   whats-on, loyalty, reserve) — deliberately NOT on staff.html, which stays
+   plain and fast for actual counter use mid-service.
+
+   These hero zones are intentionally fixed black/red/white regardless of
+   the visitor's light/dark OS preference — the real site has no light
+   variant, this IS the brand. Everything below the hero keeps using the
+   --color-* variables and still respects prefers-color-scheme as before.
+   =========================================================================== */
+
+@font-face {
+  font-family: "Anton";
+  src: url("/fonts/Anton-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.hero {
+  position: relative;
+  background-color: #000;
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  min-height: 42vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 26px 20px 40px;
+  overflow: hidden;
+  isolation: isolate;
+}
+.hero.hero--compact { min-height: 30vh; padding-top: 20px; }
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.90) 100%);
+  z-index: 0;
+}
+.hero > * { position: relative; z-index: 1; }
+
+.hero-top-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: calc(12px + var(--safe-top)) 14px 12px;
+}
+.hero-top-row .back-link {
+  color: #fff;
+  text-decoration: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 4px 8px;
+  margin-left: -8px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+.hero-badge {
+  display: inline-block;
+  align-self: flex-start;
+  border: 3px solid var(--color-primary);
+  color: var(--color-primary);
+  background: rgba(0,0,0,0.6);
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  transform: rotate(-4deg);
+  margin: 0 0 14px;
+}
+
+.hero-headline {
+  font-family: "Anton", var(--font-heading);
+  text-transform: uppercase;
+  font-weight: 400;
+  font-size: clamp(2.2rem, 11vw, 3.4rem);
+  line-height: 0.92;
+  color: #fff;
+  text-shadow: 4px 4px 0 var(--color-primary);
+  margin: 0 0 10px;
+  transform: rotate(-0.5deg);
+  max-width: 92%;
+}
+
+.hero-sub {
+  color: #f0f0f0;
+  font-size: 0.95rem;
+  max-width: 34ch;
+  margin: 0;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+.hero-quote-cite {
+  display: block;
+  margin-top: 6px;
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+.hero-location-tag {
+  position: absolute;
+  right: 16px;
+  bottom: 12px;
+  z-index: 2;
+  color: #fff;
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.halftone {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  background-image: radial-gradient(circle, var(--color-primary) 1.4px, transparent 1.6px);
+  background-size: 9px 9px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.85;
+}
+.halftone--tl { top: 0; left: 0; clip-path: polygon(0 0, 100% 0, 0 100%); }
+.halftone--br { bottom: 0; right: 0; clip-path: polygon(100% 100%, 100% 0, 0 100%); }
+
+/* Torn-paper edge strip — jagged on one side, straight on the other.
+   .torn-edge--flip rotates 180deg to jag the opposite side (and mirrors
+   left-right too, which reads as natural variation rather than a defect). */
+.torn-edge {
+  height: 20px;
+  background: #000;
+  clip-path: polygon(
+    0% 0%, 100% 0%,
+    100% 40%, 96% 85%, 92% 30%, 88% 70%, 84% 15%, 80% 60%, 76% 90%, 72% 25%,
+    68% 55%, 64% 80%, 60% 20%, 56% 65%, 52% 35%, 48% 75%, 44% 10%, 40% 50%,
+    36% 85%, 32% 30%, 28% 60%, 24% 90%, 20% 20%, 16% 70%, 12% 40%, 8% 80%,
+    4% 25%, 0% 60%
+  );
+}
+.torn-edge--red { background: var(--color-primary); }
+.torn-edge--flip { transform: rotate(180deg); }
+
+/* Guest-facing top nav bar — sits on the black torn-edge strip so it reads
+   as part of the same poster band rather than a separate UI chrome. Not
+   used on staff.html (see note at top of this design-system block). */
+.site-nav {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  background: #000;
+  padding: 10px 8px;
+  flex-wrap: wrap;
+  margin-top: -6px;
+}
+.site-nav-link {
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 8px 12px;
+  border-radius: 999px;
+}
+.site-nav-link.current {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* Hand-drawn-ish thick divider, uneven top/bottom edge rather than a
+   perfect rectangle. */
+.hand-divider {
+  height: 7px;
+  background-color: var(--color-primary);
+  margin: 22px 0;
+  border: none;
+  clip-path: polygon(
+    0% 20%, 5% 60%, 10% 10%, 15% 70%, 20% 30%, 25% 80%, 30% 15%, 35% 55%,
+    40% 25%, 45% 75%, 50% 10%, 55% 65%, 60% 30%, 65% 85%, 70% 20%, 75% 60%,
+    80% 15%, 85% 70%, 90% 25%, 95% 80%, 100% 20%,
+    100% 90%, 95% 40%, 90% 95%, 85% 30%, 80% 85%, 75% 40%, 70% 80%, 65% 15%,
+    60% 70%, 55% 35%, 50% 90%, 45% 25%, 40% 75%, 35% 20%, 30% 85%, 25% 30%,
+    20% 70%, 15% 25%, 10% 90%, 5% 40%, 0% 80%
+  );
+}
