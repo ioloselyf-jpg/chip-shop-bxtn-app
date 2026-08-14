@@ -336,6 +336,7 @@ chip-shop-bxtn-deploy.zip            Ready-to-upload deploy bundle — see setup
 - `customers/{uid}` — `{ name, nameLower, email, phone, stamps, rewardsAvailable, totalStampsEver, createdAt }` — `phone` is optional (guest can sign up with just name + email); `nameLower` is `name.toLowerCase()`, set at signup and used for live prefix search on the staff dashboard (`staff.html` → Add Stamp). Backfilled onto pre-existing customer docs on 2026-08-14.
 - `reservations/{id}` — `{ name, email, phone, partySize, date, time, notes, status, createdAt }`
 - `slotCounts/{date_time}` — `{ date, time, covers }` — aggregate headcount per slot, used for the capacity check
+- `loyaltyEvents/{id}` — `{ customerId, customerName, type, staffEmail, stampsAfter, rewardsAfter, timestamp }` — one doc per stamp-add or redemption (`type` is `"stamp"` or `"redeem"`), written by `staff.js` inside the same transaction that updates the customer doc's counters. Append-only audit log — `firestore.rules` denies update/delete on this collection entirely. Powers the "Recent activity" list in the staff dashboard's Add Stamp panel.
 
 ## What's not in this MVP (possible next steps)
 

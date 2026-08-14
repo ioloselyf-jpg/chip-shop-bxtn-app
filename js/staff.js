@@ -153,6 +153,46 @@ function selectCustomer(id, data) {
   currentCustomerId = id;
   renderCustomer(data);
   document.getElementById("customer-result").style.display = "block";
+  loadActivity(id);
+}
+
+// --- Loyalty audit log ("Recent activity") --------------------------------
+// Equality-only filter (customerId) with no orderBy — a composite index
+// would be needed to combine where(customerId==) with orderBy(timestamp),
+// same trap documented for whats-on.js/reservations elsewhere in this app.
+// Instead: fetch every event for this customer (loyaltyEvents is small per
+// customer — a handful of stamps/redemptions, not thousands) and sort/trim
+// to the most recent 10 client-side, so "last 10" is actually accurate
+// rather than an arbitrary unordered 10 a server-side limit() would give.
+async function loadActivity(customerId) {
+  const activityEl = document.getElementById("activity-list");
+  activityEl.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const snap = await getDocs(query(collection(db, "loyaltyEvents"), where("customerId", "==", customerId)));
+    if (snap.empty) {
+      activityEl.innerHTML = `<p class="hint">No activity yet.</p>`;
+      return;
+    }
+    const events = snap.docs
+      .map((d) => d.data())
+      .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0))
+      .slice(0, 10);
+
+    activityEl.innerHTML = events
+      .map((e) => {
+        const when = e.timestamp?.toDate ? e.timestamp.toDate().toLocaleString() : "just now";
+        const label = e.type === "redeem" ? "Reward redeemed" : "Stamp added";
+        return `
+        <div class="list-item">
+          <span>${escapeHtml(label)}</span>
+          <span class="hint">${escapeHtml(e.staffEmail || "unknown staff")} · ${escapeHtml(when)}</span>
+        </div>`;
+      })
+      .join("");
+  } catch (err) {
+    console.error(err);
+    activityEl.innerHTML = `<div class="msg error">Couldn't load activity${err.code ? ` (${err.code})` : ""}.</div>`;
+  }
 }
 
 // Live, as-you-type prefix search by name. Firestore has no native substring
@@ -258,9 +298,7 @@ document.getElementById("lookup-btn").addEventListener("click", async () => {
       lookupMsg.innerHTML = `<div class="msg error">No customer found with that email/phone.</div>`;
       return;
     }
-    currentCustomerId = docSnap.id;
-    renderCustomer(docSnap.data());
-    resultCard.style.display = "block";
+    selectCustomer(docSnap.id, docSnap.data());
   } catch (err) {
     console.error(err);
     lookupMsg.innerHTML = `<div class="msg error">Search failed${err.code ? ` (${err.code})` : ""}. Please try again.</div>`;
@@ -286,6 +324,10 @@ document.getElementById("add-stamp-btn").addEventListener("click", async () => {
 
   try {
     const custRef = doc(db, "customers", currentCustomerId);
+    // Auto-ID generated client-side (no network round-trip), so it can be
+    // used with tx.set() inside the transaction below — addDoc() isn't
+    // transaction-safe, but a pre-made ref + tx.set() is.
+    const eventRef = doc(collection(db, "loyaltyEvents"));
     const updated = await runTransaction(db, async (tx) => {
       const snap = await tx.get(custRef);
       const data = snap.data() || {};
@@ -302,10 +344,20 @@ document.getElementById("add-stamp-btn").addEventListener("click", async () => {
         lastStampAt: serverTimestamp()
       };
       tx.update(custRef, next);
+      tx.set(eventRef, {
+        customerId: currentCustomerId,
+        customerName: data.name || null,
+        type: "stamp",
+        staffEmail: auth.currentUser?.email || null,
+        stampsAfter: stamps,
+        rewardsAfter: rewardsAvailable,
+        timestamp: serverTimestamp()
+      });
       return { ...data, ...next };
     });
     renderCustomer(updated);
     actionMsg.innerHTML = `<div class="msg success">Stamp added.</div>`;
+    loadActivity(currentCustomerId);
   } catch (err) {
     console.error(err);
     actionMsg.innerHTML = `<div class="msg error">Couldn't add stamp. Please try again.</div>`;
@@ -323,6 +375,7 @@ document.getElementById("redeem-btn").addEventListener("click", async () => {
 
   try {
     const custRef = doc(db, "customers", currentCustomerId);
+    const eventRef = doc(collection(db, "loyaltyEvents"));
     const updated = await runTransaction(db, async (tx) => {
       const snap = await tx.get(custRef);
       const data = snap.data() || {};
@@ -334,10 +387,20 @@ document.getElementById("redeem-btn").addEventListener("click", async () => {
         lastRedeemedAt: serverTimestamp()
       };
       tx.update(custRef, next);
+      tx.set(eventRef, {
+        customerId: currentCustomerId,
+        customerName: data.name || null,
+        type: "redeem",
+        staffEmail: auth.currentUser?.email || null,
+        stampsAfter: data.stamps || 0,
+        rewardsAfter: next.rewardsAvailable,
+        timestamp: serverTimestamp()
+      });
       return { ...data, ...next };
     });
     renderCustomer(updated);
     actionMsg.innerHTML = `<div class="msg success">Reward redeemed — enjoy!</div>`;
+    loadActivity(currentCustomerId);
   } catch (err) {
     console.error(err);
     actionMsg.innerHTML = `<div class="msg error">Couldn't redeem. Please try again.</div>`;

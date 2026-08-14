@@ -80,6 +80,17 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // --- Loyalty audit log ------------------------------------------------
+    // One doc per stamp-add or redemption, written by staff.js inside the
+    // same transaction that updates the customer doc's counters, so the log
+    // can't drift out of sync with them. Append-only by design: no update or
+    // delete, since the whole point is an untamperable record of who did
+    // what and when.
+    match /loyaltyEvents/{eventId} {
+      allow read, create: if isStaff();
+      allow update, delete: if false;
+    }
+
     // --- Reservations ------------------------------------------------
     match /reservations/{resId} {
       allow read, update, delete: if isStaff();
