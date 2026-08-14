@@ -10,6 +10,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   getDocs,
   addDoc,
   updateDoc,
@@ -145,10 +146,93 @@ document.querySelectorAll("#dashboard-view .tab-btn").forEach((btn) => {
 // --- Add Stamp -----------------------------------------------------------
 let currentCustomerId = null;
 
+function selectCustomer(id, data) {
+  searchToken++; // invalidate any in-flight name search so a late result can't overwrite this selection
+  document.getElementById("name-results").innerHTML = "";
+  document.getElementById("lookup-msg").innerHTML = "";
+  currentCustomerId = id;
+  renderCustomer(data);
+  document.getElementById("customer-result").style.display = "block";
+}
+
+// Live, as-you-type prefix search by name. Firestore has no native substring
+// search, but a range query on a lowercased field gives prefix matching:
+// nameLower in [prefix, prefix + '\uF8FF') catches every string that starts
+// with prefix, since U+F8FF sorts after any realistic name character. Single
+// field, two inequality bounds on that same field — no orderBy needed and no
+// composite index required (unlike the whats-on/reservations queries
+// elsewhere, which deliberately avoid combining where+orderBy for the same
+// reason).
+const nameResultsEl = document.getElementById("name-results");
+let searchDebounceTimer = null;
+let searchToken = 0;
+
+document.getElementById("lookup-input").addEventListener("input", (e) => {
+  clearTimeout(searchDebounceTimer);
+  const raw = e.target.value.trim();
+  if (!raw) {
+    // Bump the token too, not just clear the pending timer — a search that
+    // already fired and is mid-flight (awaiting getDocs) isn't touched by
+    // clearTimeout, and without this its stale result would otherwise land
+    // and overwrite this empty state once it resolves.
+    searchToken++;
+    nameResultsEl.innerHTML = "";
+    return;
+  }
+  searchDebounceTimer = setTimeout(() => runNameSearch(raw), 250);
+});
+
+async function runNameSearch(raw) {
+  const prefix = raw.toLowerCase();
+  const thisSearch = ++searchToken;
+  try {
+    const snap = await getDocs(
+      query(
+        collection(db, "customers"),
+        where("nameLower", ">=", prefix),
+        where("nameLower", "<", prefix + "\uF8FF"),
+        limit(8)
+      )
+    );
+    if (thisSearch !== searchToken) return; // a newer keystroke's search has already landed
+
+    if (snap.empty) {
+      nameResultsEl.innerHTML = `<p class="hint">No matching names.</p>`;
+      return;
+    }
+    const matches = snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.nameLower || "").localeCompare(b.nameLower || ""));
+
+    nameResultsEl.innerHTML = matches
+      .map(
+        (m) => `
+      <button type="button" class="name-result-item" data-id="${m.id}">
+        <span>${escapeHtml(m.name || "(no name)")}</span>
+        <span class="contact">${escapeHtml([m.email, m.phone].filter(Boolean).join(" · "))}</span>
+      </button>`
+      )
+      .join("");
+
+    nameResultsEl.querySelectorAll(".name-result-item").forEach((btn, i) => {
+      btn.addEventListener("click", () => selectCustomer(matches[i].id, matches[i]));
+    });
+  } catch (err) {
+    if (thisSearch !== searchToken) return;
+    console.error(err);
+    nameResultsEl.innerHTML = `<div class="msg error">Name search failed${err.code ? ` (${err.code})` : ""}.</div>`;
+  }
+}
+
+// Exact email/phone lookup — kept as a fallback for when a guest's stamp
+// card was created before the name-search rollout, or when it's faster to
+// just type a known email/phone directly.
 document.getElementById("lookup-btn").addEventListener("click", async () => {
   const lookupMsg = document.getElementById("lookup-msg");
   const resultCard = document.getElementById("customer-result");
+  searchToken++; // invalidate any in-flight name search so a late result can't overwrite this
   lookupMsg.innerHTML = "";
+  nameResultsEl.innerHTML = "";
   resultCard.style.display = "none";
   currentCustomerId = null;
 
@@ -189,7 +273,7 @@ function renderCustomer(data) {
   document.getElementById("result-stamps").textContent = data.stamps || 0;
   document.getElementById("result-required").textContent = stampsRequired;
   const rewards = data.rewardsAvailable || 0;
-  document.getElementById("result-rewards").textContent = rewards > 0 ? `🎉 ${rewards} free portion(s) available` : "";
+  document.getElementById("result-rewards").textContent = rewards > 0 ? `🎉 ${rewards} pint(s) of Chip Shop Lager available` : "";
   document.getElementById("redeem-btn").style.display = rewards > 0 ? "block" : "none";
 }
 

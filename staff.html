@@ -58,9 +58,10 @@
     <!-- Add Stamp -->
     <div id="stamps-panel" class="tab-panel active">
       <div class="card">
-        <label for="lookup-input">Find customer by email or phone</label>
-        <input id="lookup-input" type="text" placeholder="e.g. jane@email.com or 07..." />
-        <button class="btn block" id="lookup-btn" style="margin-top:10px;">Search</button>
+        <label for="lookup-input">Find customer by name <span class="hint" style="display:inline">(live search, type as you go)</span></label>
+        <input id="lookup-input" type="text" placeholder="Start typing a name..." autocomplete="off" />
+        <div id="name-results"></div>
+        <button class="btn block" id="lookup-btn" style="margin-top:10px;">Search by exact email/phone instead</button>
         <div id="lookup-msg"></div>
       </div>
 
@@ -72,7 +73,7 @@
         <p>Stamps: <strong id="result-stamps"></strong> / <span id="result-required"></span></p>
         <p id="result-rewards"></p>
         <button class="btn block" id="add-stamp-btn">+ Add Stamp</button>
-        <button class="btn accent block" id="redeem-btn" style="margin-top:10px; display:none;">Redeem Free Portion</button>
+        <button class="btn accent block" id="redeem-btn" style="margin-top:10px; display:none;">Redeem Pint of Lager</button>
         <div id="action-msg"></div>
       </div>
     </div>

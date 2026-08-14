@@ -280,6 +280,29 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--color-accen
 table.data-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 table.data-table th, table.data-table td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--color-border); }
 
+.name-results {
+  margin-top: 4px;
+}
+.name-result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-top: none;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+.name-result-item:first-child { border-top: 1px solid var(--color-border); border-radius: 10px 10px 0 0; }
+.name-result-item:last-child { border-radius: 0 0 10px 10px; }
+.name-result-item:hover, .name-result-item:focus { background: var(--color-card); }
+.name-result-item .contact { color: var(--color-muted); font-size: 0.8rem; }
+
 .list-item {
   display: flex;
   justify-content: space-between;

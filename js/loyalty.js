@@ -61,6 +61,7 @@ document.getElementById("signup-form").addEventListener("submit", async (e) => {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
     await setDoc(doc(db, "customers", cred.user.uid), {
       name,
+      nameLower: name.toLowerCase(),
       phone: phone || null,
       email,
       stamps: 0,
@@ -116,14 +117,14 @@ function renderCard(data) {
   const remaining = Math.max(stampsRequired - stamps, 0);
   document.getElementById("progress-text").textContent =
     remaining === 0
-      ? "Your next stamp earns a free portion!"
-      : `${remaining} more stamp${remaining === 1 ? "" : "s"} until your free portion.`;
+      ? "Your next stamp earns a pint of Chip Shop Lager!"
+      : `${remaining} more stamp${remaining === 1 ? "" : "s"} until your pint of Chip Shop Lager.`;
 
   const rewardBanner = document.getElementById("reward-banner");
   const rewards = data.rewardsAvailable || 0;
   rewardBanner.innerHTML =
     rewards > 0
-      ? `<div class="reward-banner">🎉 You have ${rewards} free portion${rewards > 1 ? "s" : ""} waiting! Show this screen to staff at the counter.</div>`
+      ? `<div class="reward-banner">🎉 You have ${rewards} pint${rewards > 1 ? "s" : ""} of Chip Shop Lager waiting! Show this screen to staff at the counter.</div>`
       : "";
 }
 
