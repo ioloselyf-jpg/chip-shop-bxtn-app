@@ -316,7 +316,8 @@ whats-on.html / js/whats-on.js       What's On This Week (public, read-only)
 loyalty.html   / js/loyalty.js       Customer sign-up/login + stamp card
 reserve.html   / js/reserve.js       Table booking form
 about.html                           Venue history / About page (static, reuses hero-home.webp)
-staff.html     / js/staff.js         PIN-gated staff dashboard (add stamp, edit specials, view bookings)
+djs.html       / js/djs.js           Resident DJs roster (public, read-only; reuses hero-whats-on.webp)
+staff.html     / js/staff.js         PIN-gated staff dashboard (add stamp, edit specials, manage DJs, view bookings)
 offline.html                         Shown when offline and page isn't cached
 manifest.json                        PWA manifest
 service-worker.js                    Caches the app shell for install + offline
@@ -337,6 +338,7 @@ chip-shop-bxtn-deploy.zip            Ready-to-upload deploy bundle — see setup
 - `reservations/{id}` — `{ name, email, phone, partySize, date, time, notes, status, createdAt }`
 - `slotCounts/{date_time}` — `{ date, time, covers }` — aggregate headcount per slot, used for the capacity check
 - `loyaltyEvents/{id}` — `{ customerId, customerName, type, staffEmail, stampsAfter, rewardsAfter, timestamp }` — one doc per stamp-add or redemption (`type` is `"stamp"` or `"redeem"`), written by `staff.js` inside the same transaction that updates the customer doc's counters. Append-only audit log — `firestore.rules` denies update/delete on this collection entirely. Powers the "Recent activity" list in the staff dashboard's Add Stamp panel.
+- `djs/{id}` — `{ name, bio, photoUrl, upcomingDates, order, active, updatedAt }` — `bio`/`photoUrl` are optional (null if unset), `upcomingDates` is an array of `"YYYY-MM-DD"` strings. **`photoUrl` is a plain string field, not a real upload** — there's no Firebase Storage integration in this app yet, so staff have to host the image somewhere else (e.g. a public image host) and paste the link in. Building real in-app image upload is a bigger separate task. Seeded with the real 11-DJ roster (names only) on 2026-08-14 — bios/photos/dates still need filling in via the staff dashboard.
 
 ## What's not in this MVP (possible next steps)
 
@@ -345,6 +347,7 @@ chip-shop-bxtn-deploy.zip            Ready-to-upload deploy bundle — see setup
 - Editing/cancelling a reservation from the guest side (currently guest calls the shop; staff can view the list)
 - Per-table (rather than total-covers) capacity modeling
 - Firebase App Check, to harden the public write endpoints (reservations, stamp counters) against scripted abuse
+- Real image upload for DJ photos (`djs.photoUrl` is a plain URL string staff paste in themselves — no Firebase Storage integration)
 
 ## Editing "What's On" day-to-day
 

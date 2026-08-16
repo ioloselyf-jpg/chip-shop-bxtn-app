@@ -46,6 +46,12 @@ service cloud.firestore {
       allow create, update, delete: if isStaff();
     }
 
+    // --- Resident DJs ---------------------------------------------------
+    match /djs/{djId} {
+      allow read: if true;
+      allow create, update, delete: if isStaff();
+    }
+
     // --- Loyalty customers ----------------------------------------------
     match /customers/{uid} {
       // Split get/list deliberately: a customer fetching their OWN profile

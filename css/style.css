@@ -101,6 +101,31 @@ main {
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
+.dj-card {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.dj-photo {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--color-border);
+}
+.dj-photo--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  color: var(--color-muted);
+}
+.dj-info { min-width: 0; }
+.dj-info h2 { margin: 0 0 4px; font-size: 1.15rem; }
+.dj-info p { margin: 0 0 4px; }
+.dj-info p:last-child { margin-bottom: 0; }
+
 .home-grid {
   display: grid;
   gap: 14px;

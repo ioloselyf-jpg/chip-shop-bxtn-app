@@ -11,6 +11,7 @@ import {
   where,
   orderBy,
   limit,
+  getDoc,
   getDocs,
   addDoc,
   updateDoc,
@@ -126,9 +127,11 @@ onAuthStateChanged(auth, (user) => {
     const matchesConfig = staffEmail && user.email === staffEmail;
     signedInEl.textContent = `Signed in as: ${user.email}${matchesConfig ? "" : " ⚠️ doesn't match configured staff email"}`;
     startSpecialsListener();
+    startDjsListener();
     startReservationsListener();
   } else {
     stopSpecialsListener();
+    stopDjsListener();
     stopReservationsListener();
   }
 });
@@ -491,6 +494,153 @@ document.getElementById("add-special-btn").addEventListener("click", async () =>
   } catch (err) {
     console.error(err);
     msgEl.innerHTML = `<div class="msg error">Couldn't add — please try again.</div>`;
+  }
+});
+
+// --- Resident DJs editor ----------------------------------------------
+// Same list/toggle/delete pattern as the specials editor above, plus Edit
+// (which specials doesn't have): rather than a separate form, editing
+// re-uses the same Add form — populate it from the selected DJ, flip the
+// heading/button text, and branch addDoc vs updateDoc on save. Keeps one
+// form to maintain instead of two near-identical ones.
+let unsubDjs = null;
+let editingDjId = null;
+
+function startDjsListener() {
+  const listEl = document.getElementById("djs-list");
+  // Single-field orderBy, no where() alongside it — no composite index
+  // needed, same reasoning as the specials listener above. Ascending here
+  // (not desc like specials) because a DJ's `order` is a deliberately
+  // curated lineup position, not a "newest first" timestamp.
+  const q = query(collection(db, "djs"), orderBy("order", "asc"));
+  unsubDjs = onSnapshot(q, (snap) => {
+    if (snap.empty) {
+      listEl.innerHTML = `<p class="hint">No resident DJs added yet.</p>`;
+      return;
+    }
+    listEl.innerHTML = snap.docs
+      .map((d) => {
+        const dj = d.data();
+        const dates = Array.isArray(dj.upcomingDates) ? dj.upcomingDates : [];
+        return `
+        <div class="card">
+          <span class="badge" style="background:${dj.active ? "var(--color-accent)" : "var(--color-border)"}; color:${dj.active ? "#fff" : "var(--color-text)"};">${dj.active ? "Live" : "Hidden"}</span>
+          <h3>${escapeHtml(dj.name)}</h3>
+          ${dj.bio ? `<p>${escapeHtml(dj.bio)}</p>` : ""}
+          <p class="hint">Order: ${dj.order ?? 0} · ${dj.photoUrl ? "Photo set" : "No photo set"}</p>
+          ${dates.length ? `<p class="hint">Dates: ${escapeHtml(dates.join(", "))}</p>` : ""}
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn secondary small" data-action="edit" data-id="${d.id}">Edit</button>
+            <button class="btn secondary small" data-action="toggle" data-id="${d.id}" data-active="${dj.active}">${dj.active ? "Hide" : "Show"}</button>
+            <button class="btn secondary small" data-action="delete" data-id="${d.id}">Delete</button>
+          </div>
+        </div>`;
+      })
+      .join("");
+  });
+}
+
+function stopDjsListener() {
+  if (unsubDjs) { unsubDjs(); unsubDjs = null; }
+}
+
+function fillDjForm(dj) {
+  document.getElementById("new-dj-name").value = dj.name || "";
+  document.getElementById("new-dj-bio").value = dj.bio || "";
+  document.getElementById("new-dj-photo").value = dj.photoUrl || "";
+  document.getElementById("new-dj-dates").value = Array.isArray(dj.upcomingDates) ? dj.upcomingDates.join(", ") : "";
+  document.getElementById("new-dj-order").value = dj.order ?? "";
+}
+
+function clearDjForm() {
+  document.getElementById("new-dj-name").value = "";
+  document.getElementById("new-dj-bio").value = "";
+  document.getElementById("new-dj-photo").value = "";
+  document.getElementById("new-dj-dates").value = "";
+  document.getElementById("new-dj-order").value = "";
+}
+
+function setDjEditMode(id, dj) {
+  editingDjId = id;
+  fillDjForm(dj);
+  document.getElementById("dj-form-heading").textContent = `Edit ${dj.name}`;
+  document.getElementById("add-dj-btn").textContent = "Save changes";
+  document.getElementById("cancel-dj-edit-btn").style.display = "block";
+  document.getElementById("dj-msg").innerHTML = "";
+}
+
+function exitDjEditMode() {
+  editingDjId = null;
+  clearDjForm();
+  document.getElementById("dj-form-heading").textContent = "Add a resident DJ";
+  document.getElementById("add-dj-btn").textContent = "Add DJ";
+  document.getElementById("cancel-dj-edit-btn").style.display = "none";
+}
+
+document.getElementById("cancel-dj-edit-btn").addEventListener("click", exitDjEditMode);
+
+document.getElementById("djs-list").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+  const id = btn.dataset.id;
+
+  if (btn.dataset.action === "toggle") {
+    await updateDoc(doc(db, "djs", id), { active: !(btn.dataset.active === "true") });
+  } else if (btn.dataset.action === "delete") {
+    if (confirm("Delete this DJ?")) {
+      if (editingDjId === id) exitDjEditMode();
+      await deleteDoc(doc(db, "djs", id));
+    }
+  } else if (btn.dataset.action === "edit") {
+    const snap = await getDoc(doc(db, "djs", id));
+    if (snap.exists()) setDjEditMode(id, snap.data());
+  }
+});
+
+document.getElementById("add-dj-btn").addEventListener("click", async () => {
+  const msgEl = document.getElementById("dj-msg");
+  msgEl.innerHTML = "";
+  const name = document.getElementById("new-dj-name").value.trim();
+  const bio = document.getElementById("new-dj-bio").value.trim();
+  const photoUrl = document.getElementById("new-dj-photo").value.trim();
+  const datesRaw = document.getElementById("new-dj-dates").value.trim();
+  const orderRaw = document.getElementById("new-dj-order").value;
+
+  if (!name) {
+    msgEl.innerHTML = `<div class="msg error">Name is required.</div>`;
+    return;
+  }
+
+  // Comma-separated "YYYY-MM-DD, YYYY-MM-DD" -> array, dropping blanks from
+  // stray commas/whitespace. Not validated against the real calendar (e.g.
+  // "2026-13-40" would pass) — same level of trust the specials date field
+  // already gets elsewhere in this app.
+  const upcomingDates = datesRaw
+    ? datesRaw.split(",").map((d) => d.trim()).filter(Boolean)
+    : [];
+
+  const payload = {
+    name,
+    bio: bio || null,
+    photoUrl: photoUrl || null,
+    upcomingDates,
+    order: orderRaw !== "" ? Number(orderRaw) : Date.now(),
+    updatedAt: serverTimestamp()
+  };
+
+  try {
+    if (editingDjId) {
+      await updateDoc(doc(db, "djs", editingDjId), payload);
+      msgEl.innerHTML = `<div class="msg success">Saved.</div>`;
+      exitDjEditMode();
+    } else {
+      await addDoc(collection(db, "djs"), { ...payload, active: true });
+      clearDjForm();
+      msgEl.innerHTML = `<div class="msg success">Added.</div>`;
+    }
+  } catch (err) {
+    console.error(err);
+    msgEl.innerHTML = `<div class="msg error">Couldn't save — please try again.</div>`;
   }
 });
 

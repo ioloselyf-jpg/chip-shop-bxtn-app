@@ -3,12 +3,16 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>What's On — Chip Shop Bxtn</title>
+<title>Resident DJs — Chip Shop Bxtn</title>
+<meta name="description" content="Meet the resident DJs behind the decks at Chip Shop Bxtn." />
 <link rel="manifest" href="/manifest.json" />
 <meta name="theme-color" content="#fb0000" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 <link rel="icon" href="/icons/favicon.png" />
+<!-- No dedicated DJs hero photo exists yet — reuses the What's On hero image
+     (same reasoning as about.html reusing the homepage hero). Worth
+     commissioning a proper photo later if you want it visually distinct. -->
 <link rel="preload" as="image" href="/images/hero-whats-on.webp" />
 <link rel="preload" as="font" href="/fonts/Anton-Regular.woff2" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="/css/style.css" />
@@ -21,18 +25,18 @@
   <div class="halftone halftone--tl"></div>
   <div class="halftone halftone--br"></div>
   <span class="hero-badge">Chip Shop Bxtn</span>
-  <h1 class="hero-headline">What's<br />On</h1>
-  <p class="hero-sub">Specials &amp; events this week</p>
+  <h1 class="hero-headline">Resident<br />DJs</h1>
+  <p class="hero-sub">The sound of Chip Shop</p>
   <span class="hero-location-tag">Brixton</span>
 </div>
 <div class="torn-edge torn-edge--red"></div>
 <div class="torn-edge" style="margin-top:-6px;"></div>
 <nav class="site-nav">
   <a class="site-nav-link" href="/index.html">Home</a>
-  <a class="site-nav-link current" href="/whats-on.html">What's On</a>
+  <a class="site-nav-link" href="/whats-on.html">What's On</a>
   <a class="site-nav-link" href="/loyalty.html">Loyalty</a>
   <a class="site-nav-link" href="/reserve.html">Reserve</a>
-  <a class="site-nav-link" href="/djs.html">Resident DJs</a>
+  <a class="site-nav-link current" href="/djs.html">Resident DJs</a>
   <a class="site-nav-link" href="/about.html">About</a>
   <a class="site-nav-link" href="/index.html#contact">Contact Us</a>
 </nav>
@@ -41,11 +45,20 @@
   <div id="content">
     <div class="spinner"></div>
   </div>
+
+  <div class="card" style="text-align:center;">
+    <p class="hint" style="margin:0 0 10px;">Find us online</p>
+    <p style="margin:0;">
+      <a href="https://chipshopbxtn.com" target="_blank" rel="noopener">chipshopbxtn.com</a>
+      &nbsp;·&nbsp;
+      <a href="https://www.instagram.com/chipshop_bxtn/" target="_blank" rel="noopener">@chipshop_bxtn</a>
+    </p>
+  </div>
 </main>
 
 <footer class="app-footer">&copy; <span id="year"></span> Chip Shop Bxtn</footer>
 
-<script type="module" src="/js/whats-on.js"></script>
+<script type="module" src="/js/djs.js"></script>
 <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
 </body>
 </html>
