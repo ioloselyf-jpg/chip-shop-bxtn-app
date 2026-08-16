@@ -1,6 +1,6 @@
 // Bump this whenever you deploy changes to shell files below — it forces
 // clients to fetch fresh copies instead of serving stale cached versions.
-const CACHE_VERSION = "v11";
+const CACHE_VERSION = "v12";
 const CACHE_NAME = `chip-shop-shell-${CACHE_VERSION}`;
 
 const SHELL_FILES = [
@@ -30,7 +30,8 @@ const SHELL_FILES = [
   "/images/hero-home.webp",
   "/images/hero-whats-on.webp",
   "/images/hero-loyalty.webp",
-  "/images/hero-reserve.webp"
+  "/images/hero-reserve.webp",
+  "/images/djs/dj-shorty.jpg"
 ];
 
 self.addEventListener("install", (event) => {
