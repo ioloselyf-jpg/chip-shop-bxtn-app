@@ -64,6 +64,7 @@ function render(djs) {
           <h2>${escapeHtml(dj.name)}</h2>
           ${dj.bio ? `<p>${escapeHtml(dj.bio)}</p>` : ""}
           ${next ? `<p class="hint">Next playing: ${escapeHtml(formatDjDate(next))}</p>` : ""}
+          ${dj.instagram ? `<a class="dj-instagram" href="${escapeHtml(dj.instagram)}" target="_blank" rel="noopener">📷 Instagram</a>` : ""}
         </div>
       </div>`;
     })

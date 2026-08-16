@@ -527,7 +527,7 @@ function startDjsListener() {
           <span class="badge" style="background:${dj.active ? "var(--color-accent)" : "var(--color-border)"}; color:${dj.active ? "#fff" : "var(--color-text)"};">${dj.active ? "Live" : "Hidden"}</span>
           <h3>${escapeHtml(dj.name)}</h3>
           ${dj.bio ? `<p>${escapeHtml(dj.bio)}</p>` : ""}
-          <p class="hint">Order: ${dj.order ?? 0} · ${dj.photoUrl ? "Photo set" : "No photo set"}</p>
+          <p class="hint">Order: ${dj.order ?? 0} · ${dj.photoUrl ? "Photo set" : "No photo set"} · ${dj.instagram ? "Instagram set" : "No Instagram"}</p>
           ${dates.length ? `<p class="hint">Dates: ${escapeHtml(dates.join(", "))}</p>` : ""}
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button class="btn secondary small" data-action="edit" data-id="${d.id}">Edit</button>
@@ -548,6 +548,7 @@ function fillDjForm(dj) {
   document.getElementById("new-dj-name").value = dj.name || "";
   document.getElementById("new-dj-bio").value = dj.bio || "";
   document.getElementById("new-dj-photo").value = dj.photoUrl || "";
+  document.getElementById("new-dj-instagram").value = dj.instagram || "";
   document.getElementById("new-dj-dates").value = Array.isArray(dj.upcomingDates) ? dj.upcomingDates.join(", ") : "";
   document.getElementById("new-dj-order").value = dj.order ?? "";
 }
@@ -556,6 +557,7 @@ function clearDjForm() {
   document.getElementById("new-dj-name").value = "";
   document.getElementById("new-dj-bio").value = "";
   document.getElementById("new-dj-photo").value = "";
+  document.getElementById("new-dj-instagram").value = "";
   document.getElementById("new-dj-dates").value = "";
   document.getElementById("new-dj-order").value = "";
 }
@@ -603,6 +605,7 @@ document.getElementById("add-dj-btn").addEventListener("click", async () => {
   const name = document.getElementById("new-dj-name").value.trim();
   const bio = document.getElementById("new-dj-bio").value.trim();
   const photoUrl = document.getElementById("new-dj-photo").value.trim();
+  const instagram = document.getElementById("new-dj-instagram").value.trim();
   const datesRaw = document.getElementById("new-dj-dates").value.trim();
   const orderRaw = document.getElementById("new-dj-order").value;
 
@@ -623,6 +626,7 @@ document.getElementById("add-dj-btn").addEventListener("click", async () => {
     name,
     bio: bio || null,
     photoUrl: photoUrl || null,
+    instagram: instagram || null,
     upcomingDates,
     order: orderRaw !== "" ? Number(orderRaw) : Date.now(),
     updatedAt: serverTimestamp()
