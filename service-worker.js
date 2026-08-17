@@ -1,6 +1,6 @@
 // Bump this whenever you deploy changes to shell files below — it forces
 // clients to fetch fresh copies instead of serving stale cached versions.
-const CACHE_VERSION = "v15";
+const CACHE_VERSION = "v16";
 const CACHE_NAME = `chip-shop-shell-${CACHE_VERSION}`;
 
 const SHELL_FILES = [
@@ -39,9 +39,9 @@ const SHELL_FILES = [
   "/images/djs/unique-hastings.jpg",
   "/images/djs/asian-hawk.jpg",
   "/images/djs/fraggle.jpg",
-  "/images/djs/dj-finest.jpg",
   "/images/djs/dj-rumz.jpg",
-  "/images/djs/rapture.png"
+  "/images/djs/rapture.png",
+  "/images/djs/zia.jpg"
 ];
 
 self.addEventListener("install", (event) => {
