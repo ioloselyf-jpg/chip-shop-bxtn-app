@@ -41,6 +41,20 @@ function nextUpcoming(dates) {
   return future[0] || null;
 }
 
+// Bios are stored as plain text with blank lines between paragraphs (staff
+// type them that way in the dashboard textarea). Split on those blank lines
+// into separate <p> tags — a single flat block otherwise reads as a wall of
+// text — and turn any single line break inside a paragraph into <br>, for
+// short one-line "sections" like Dave Lazy's genre list.
+function renderBio(bio) {
+  return bio
+    .split(/\n\s*\n/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
 function render(djs) {
   if (djs.length === 0) {
     contentEl.innerHTML = `
@@ -62,9 +76,15 @@ function render(djs) {
         }
         <div class="dj-info">
           <h2>${escapeHtml(dj.name)}</h2>
-          ${dj.bio ? `<p>${escapeHtml(dj.bio)}</p>` : ""}
+          ${dj.bio ? renderBio(dj.bio) : ""}
           ${next ? `<p class="hint">Next playing: ${escapeHtml(formatDjDate(next))}</p>` : ""}
-          ${dj.instagram ? `<a class="dj-instagram" href="${escapeHtml(dj.instagram)}" target="_blank" rel="noopener">📷 Instagram</a>` : ""}
+          ${
+            dj.instagram
+              ? `<a class="dj-instagram" href="${escapeHtml(dj.instagram)}" target="_blank" rel="noopener">${
+                  dj.instagram.includes("instagram.com") ? "📷 Instagram" : "🔗 Links"
+                }</a>`
+              : ""
+          }
         </div>
       </div>`;
     })
