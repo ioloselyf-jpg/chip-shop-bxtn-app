@@ -2,12 +2,27 @@
 // is made. Called by js/reserve.js via fetch() right after the Firestore
 // write succeeds — this is a best-effort layer on top of that write, not a
 // replacement for it. The reservation is already "confirmed" in Firestore
-// by the time this runs, so a failure here (missing API key, Resend being
-// down, a bad address) must never look like a failed booking to the guest;
-// reserve.js already treats this call as fire-and-forget for that reason.
+// by the time this runs, so a failure here (missing SMTP credentials, the
+// mailbox being unreachable, a bad address) must never look like a failed
+// booking to the guest; reserve.js already treats this call as
+// fire-and-forget for that reason.
+//
+// Sends via SMTP through the owner's real 123 Reg "Professional Email"
+// mailbox (Open-Xchange, iolo@chipshopbxtn.co.uk) rather than a third-party
+// ESP — no domain verification needed (that's unreachable for this owner,
+// who doesn't control the domain's DNS), since the mail is authenticated as
+// a real mailbox the receiving server already trusts.
+
+const nodemailer = require("nodemailer");
 
 const STAFF_EMAIL = "iolo@chipshopbxtn.co.uk";
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "Chip Shop Bxtn <reservations@chipshopbxtn.com>";
+
+// 123 Reg "Professional Email" (Open-Xchange) documented settings:
+// smtpout.secureserver.net, port 465 with SSL/TLS (or 587/25 with SSL off —
+// not used here). Overridable via env vars in case that ever changes.
+const SMTP_HOST = process.env.SMTP_HOST || "smtpout.secureserver.net";
+const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
+const SMTP_SECURE = process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : SMTP_PORT === 465;
 
 const SHOP_ADDRESS = "378 Coldharbour Lane, Brixton, London SW9 8LF";
 const SHOP_PHONE = "020 7274 3350";
@@ -120,53 +135,52 @@ exports.handler = async (event) => {
     return jsonResponse(400, { error: "Missing required reservation fields (name, email, date, time, partySize)" });
   }
 
-  // Fail clearly and cleanly if the key isn't configured yet, rather than
-  // letting `new Resend(undefined)` blow up further down or silently no-op.
-  // This is expected until the owner's Resend account/key exists — reserve.js
-  // ignores this response either way, so it's safe for this to 500.
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    console.error("RESEND_API_KEY is not set — skipping reservation emails.");
-    return jsonResponse(500, { error: "Email sending is not configured (RESEND_API_KEY missing)." });
+  // Fail clearly and cleanly if credentials aren't configured yet, rather
+  // than letting nodemailer blow up further down with a less obvious error.
+  // reserve.js ignores this response either way, so it's safe for this to
+  // 500 — the booking itself already succeeded before this function ran.
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPassword = process.env.SMTP_PASSWORD;
+  if (!smtpUser || !smtpPassword) {
+    console.error("SMTP_USER/SMTP_PASSWORD are not set — skipping reservation emails.");
+    return jsonResponse(500, { error: "Email sending is not configured (SMTP_USER/SMTP_PASSWORD missing)." });
   }
 
-  const { Resend } = require("resend");
-  const resend = new Resend(apiKey);
+  const fromEmail = process.env.SMTP_FROM_EMAIL || `Chip Shop Bxtn <${smtpUser}>`;
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
+    auth: { user: smtpUser, pass: smtpPassword }
+  });
+
   const reservation = { name, email, phone, partySize, date, time, notes };
 
+  // nodemailer's sendMail() rejects its promise on failure (unlike some ESP
+  // SDKs that resolve-with-error instead) — a plain rejected/fulfilled
+  // check on Promise.allSettled is the correct and sufficient way to detect
+  // a failed send here.
   const [guestResult, staffResult] = await Promise.allSettled([
-    resend.emails.send({
-      from: FROM_EMAIL,
+    transporter.sendMail({
+      from: fromEmail,
       to: email,
       subject: "Your table's booked — Chip Shop Bxtn",
       html: guestEmailHtml(reservation)
     }),
-    resend.emails.send({
-      from: FROM_EMAIL,
+    transporter.sendMail({
+      from: fromEmail,
       to: STAFF_EMAIL,
       subject: `New reservation: ${name}, party of ${partySize} — ${date}`,
       html: staffEmailHtml(reservation)
     })
   ]);
 
-  // The Resend SDK does NOT reject its promise on API-level errors (bad key,
-  // unverified domain, etc.) — it resolves with { data: null, error: {...} }.
-  // Promise.allSettled's rejected/fulfilled split alone would miss that and
-  // report a failed send as successful, so each settled result also needs
-  // its own .value.error checked.
-  function sendSucceeded(result) {
-    return result.status === "fulfilled" && !result.value?.error;
-  }
+  const guestOk = guestResult.status === "fulfilled";
+  const staffOk = staffResult.status === "fulfilled";
 
-  const guestOk = sendSucceeded(guestResult);
-  const staffOk = sendSucceeded(staffResult);
-
-  if (!guestOk) {
-    console.error("Guest email failed:", guestResult.status === "rejected" ? guestResult.reason : guestResult.value.error);
-  }
-  if (!staffOk) {
-    console.error("Staff email failed:", staffResult.status === "rejected" ? staffResult.reason : staffResult.value.error);
-  }
+  if (!guestOk) console.error("Guest email failed:", guestResult.reason);
+  if (!staffOk) console.error("Staff email failed:", staffResult.reason);
 
   if (!guestOk || !staffOk) {
     return jsonResponse(207, { ok: guestOk || staffOk, guestEmailSent: guestOk, staffEmailSent: staffOk });

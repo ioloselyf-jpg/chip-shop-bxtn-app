@@ -3,6 +3,6 @@
   "private": true,
   "description": "Dependencies for netlify/functions/ — the site itself is a static app with no build step.",
   "dependencies": {
-    "resend": "^4.0.1"
+    "nodemailer": "^9.0.5"
   }
 }

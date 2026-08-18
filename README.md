@@ -330,7 +330,7 @@ icons/logo.png                       Real logo (transparent bg), used in the app
 icons/source/chipshop-logo.png       Original downloaded logo — regenerate icons from this if needed
 chip-shop-bxtn-deploy.zip            Ready-to-upload deploy bundle — see setup step 5
 netlify.toml                         Tells Netlify where Functions live (netlify/functions/)
-netlify/functions/send-reservation-emails.js   Guest confirmation + staff alert emails via Resend — see "Reservation emails" below
+netlify/functions/send-reservation-emails.js   Guest confirmation + staff alert emails via SMTP — see "Reservation emails" below
 package.json / package-lock.json     Dependencies for netlify/functions/ only — the site itself has no build step
 ```
 
@@ -343,19 +343,29 @@ package.json / package-lock.json     Dependencies for netlify/functions/ only �
 - `loyaltyEvents/{id}` — `{ customerId, customerName, type, staffEmail, stampsAfter, rewardsAfter, timestamp }` — one doc per stamp-add or redemption (`type` is `"stamp"` or `"redeem"`), written by `staff.js` inside the same transaction that updates the customer doc's counters. Append-only audit log — `firestore.rules` denies update/delete on this collection entirely. Powers the "Recent activity" list in the staff dashboard's Add Stamp panel.
 - `djs/{id}` — `{ name, bio, photoUrl, instagram, upcomingDates, order, active, updatedAt }` — `bio`/`photoUrl`/`instagram` are optional (null if unset), `upcomingDates` is an array of `"YYYY-MM-DD"` strings. `bio` is plain text with a **blank line between paragraphs** — `js/djs.js` splits on those into separate `<p>` tags (a single flat block reads as a wall of text otherwise); a lone `\n` within a paragraph becomes `<br>`. `instagram` holds any profile/link URL — rendered as "📷 Instagram" when the URL contains `instagram.com`, otherwise as a generic "🔗 Links" (e.g. a Linktree). **`photoUrl` is a plain string field, not a real upload** — there's no Firebase Storage integration in this app yet, so staff have to host the image somewhere else (e.g. a public image host) and paste the link in. Building real in-app image upload is a bigger separate task. Seeded with the real 12-DJ roster (names only) on 2026-08-16 — "DJ Croc" was in the original list but removed per an owner correction; "DJ Dave Lazy" and "DJ Outbreak" added in its place. Bios/photos/Instagram filled in for 10 of the 12 on 2026-08-17 (all but "Mr Parker and Zia" and "Rapture", still pending from the owner).
 
-## Reservation emails (Netlify Function + Resend)
+## Reservation emails (Netlify Function + SMTP)
 
-Added 2026-08-17, **not live yet** — needs a Resend API key before it does anything.
+Added 2026-08-17, **not live yet** — needs the mailbox password before it does anything.
 
-When a guest submits `reserve.html`'s booking form, after the Firestore write succeeds `js/reserve.js` fires a fetch to `/.netlify/functions/send-reservation-emails` (fire-and-forget — a failed/unconfigured email call must never make a successful booking look failed; see the comments in both files). That function (`netlify/functions/send-reservation-emails.js`) sends two emails via [Resend](https://resend.com):
+When a guest submits `reserve.html`'s booking form, after the Firestore write succeeds `js/reserve.js` fires a fetch to `/.netlify/functions/send-reservation-emails` (fire-and-forget — a failed/unconfigured email call must never make a successful booking look failed; see the comments in both files). That function (`netlify/functions/send-reservation-emails.js`) sends two emails via SMTP, using [nodemailer](https://nodemailer.com):
 - **Guest** — booking confirmation, sent to the email address they entered
 - **Staff** — booking alert, sent to `iolo@chipshopbxtn.co.uk` (hardcoded in the function, same pattern as the staff PIN email elsewhere in this app)
 
+**Originally built against [Resend](https://resend.com)** (2026-08-17), but that needs a verified sending domain to reach real recipients — the owner doesn't have DNS access for `chipshopbxtn.com`, and the account's API key (correctly scoped send-only) can't drive the domain-add flow either, and logging into the Resend dashboard requires credentials nobody here has. Switched to sending via SMTP through the owner's real mailbox instead (2026-08-18) — no domain verification needed, since the receiving server already trusts an authenticated real mailbox.
+
+**SMTP provider:** 123 Reg "Professional Email" (Open-Xchange, webmail at `eu1.myprofessionalmail.com`), mailbox `iolo@chipshopbxtn.co.uk`. Documented settings (confirmed against three independent official 123-reg support pages, then independently re-confirmed live: a real SMTP handshake against `smtpout.secureserver.net:465` with a deliberately wrong password came back with a clean `535 Authentication Failed` — not a connection error — proving the host/port/security are correct):
+- Host: `smtpout.secureserver.net`
+- Port: `465`, SSL/TLS (alternative: `587` or `25` with SSL off — not used here)
+
+**No app-specific password support found for this product.** The underlying Open-Xchange platform (App Suite 7.10.4+) does support application-specific passwords as a general feature, but none of 123-reg's own "Professional Email" documentation mentions or exposes it — every official client-setup guide instructs using the main mailbox password directly. Worth the owner checking their webmail account's security settings just in case it's there but undocumented; otherwise, the real tradeoff is that this function will hold a full-access mailbox password, not a scoped-down credential.
+
 **What's needed to go live:**
-1. Owner finishes signing up for Resend and verifies a sending domain (or use `onboarding@resend.dev` as a stopgap `from` address — only good for testing, not real guest email).
-2. Set two environment variables in the Netlify dashboard (Site settings → Environment variables) for the `chipshopbxtn` site:
-   - `RESEND_API_KEY` — required. Without it, the function returns a clean `500` (logged, doesn't throw) — the booking itself is unaffected either way.
-   - `RESEND_FROM_EMAIL` — optional, defaults to `Chip Shop Bxtn <reservations@chipshopbxtn.com>`. Only works once that domain (or address) is verified in Resend.
+1. Get the mailbox password for `iolo@chipshopbxtn.co.uk` from the owner.
+2. Set environment variables in Netlify for the `chipshopbxtn` site (`netlify env:set NAME value`, or the dashboard):
+   - `SMTP_USER` — `iolo@chipshopbxtn.co.uk`
+   - `SMTP_PASSWORD` — the mailbox password. Required — without it (or `SMTP_USER`), the function returns a clean `500` (logged, doesn't throw); the booking itself is unaffected either way.
+   - `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` — optional, default to the documented settings above.
+   - `SMTP_FROM_EMAIL` — optional, defaults to `Chip Shop Bxtn <iolo@chipshopbxtn.co.uk>`.
 3. Redeploy. Functions aren't included in the curated static deploy zip (`chip-shop-bxtn-deploy.zip`) — deploy them with an explicit `--functions` flag alongside `--dir`:
    ```
    netlify deploy --prod --dir=<extracted deploy folder> --functions=netlify/functions
@@ -363,7 +373,7 @@ When a guest submits `reserve.html`'s booking form, after the Firestore write su
    (or via `netlify deploy` draft + `netlify api restoreSiteDeploy`, the pattern used elsewhere in this project's deploy history — see git log).
 4. Do one real test booking end-to-end and confirm both emails land.
 
-`npm install` (run once, from the repo root) populates `node_modules/` so Netlify's bundler can trace and package the `resend` dependency — `node_modules/` itself isn't committed (see `.gitignore`).
+`npm install` (run once, from the repo root) populates `node_modules/` so Netlify's bundler can trace and package the `nodemailer` dependency — `node_modules/` itself isn't committed (see `.gitignore`).
 
 ## What's not in this MVP (possible next steps)
 
