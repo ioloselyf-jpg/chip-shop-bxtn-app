@@ -194,6 +194,17 @@ form.addEventListener("submit", async (e) => {
     confirmView.style.display = "block";
     document.getElementById("confirmation-text").textContent =
       `Table for ${partySize} on ${date} at ${minutesToLabel(timeToMinutes(time))}, under the name ${name}.`;
+
+    // Best-effort confirmation/alert emails — the booking above is already
+    // committed and "confirmed" by this point. This call is fire-and-forget
+    // on purpose: a slow, down, or not-yet-configured email provider (no
+    // RESEND_API_KEY set yet, for instance) must never make a successful
+    // booking look like it failed.
+    fetch("/.netlify/functions/send-reservation-emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, phone, partySize, date, time, notes: notes || null })
+    }).catch((err) => console.error("Reservation email request failed:", err));
   } catch (err) {
     console.error(err);
     if (err.message === "SLOT_FULL") {

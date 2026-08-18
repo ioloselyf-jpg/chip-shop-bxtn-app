@@ -329,6 +329,9 @@ icons/                                Real PWA icons, generated from the logo �
 icons/logo.png                       Real logo (transparent bg), used in the app header
 icons/source/chipshop-logo.png       Original downloaded logo — regenerate icons from this if needed
 chip-shop-bxtn-deploy.zip            Ready-to-upload deploy bundle — see setup step 5
+netlify.toml                         Tells Netlify where Functions live (netlify/functions/)
+netlify/functions/send-reservation-emails.js   Guest confirmation + staff alert emails via Resend — see "Reservation emails" below
+package.json / package-lock.json     Dependencies for netlify/functions/ only — the site itself has no build step
 ```
 
 ## Data model (Firestore)
@@ -339,6 +342,28 @@ chip-shop-bxtn-deploy.zip            Ready-to-upload deploy bundle — see setup
 - `slotCounts/{date_time}` — `{ date, time, covers }` — aggregate headcount per slot, used for the capacity check
 - `loyaltyEvents/{id}` — `{ customerId, customerName, type, staffEmail, stampsAfter, rewardsAfter, timestamp }` — one doc per stamp-add or redemption (`type` is `"stamp"` or `"redeem"`), written by `staff.js` inside the same transaction that updates the customer doc's counters. Append-only audit log — `firestore.rules` denies update/delete on this collection entirely. Powers the "Recent activity" list in the staff dashboard's Add Stamp panel.
 - `djs/{id}` — `{ name, bio, photoUrl, instagram, upcomingDates, order, active, updatedAt }` — `bio`/`photoUrl`/`instagram` are optional (null if unset), `upcomingDates` is an array of `"YYYY-MM-DD"` strings. `bio` is plain text with a **blank line between paragraphs** — `js/djs.js` splits on those into separate `<p>` tags (a single flat block reads as a wall of text otherwise); a lone `\n` within a paragraph becomes `<br>`. `instagram` holds any profile/link URL — rendered as "📷 Instagram" when the URL contains `instagram.com`, otherwise as a generic "🔗 Links" (e.g. a Linktree). **`photoUrl` is a plain string field, not a real upload** — there's no Firebase Storage integration in this app yet, so staff have to host the image somewhere else (e.g. a public image host) and paste the link in. Building real in-app image upload is a bigger separate task. Seeded with the real 12-DJ roster (names only) on 2026-08-16 — "DJ Croc" was in the original list but removed per an owner correction; "DJ Dave Lazy" and "DJ Outbreak" added in its place. Bios/photos/Instagram filled in for 10 of the 12 on 2026-08-17 (all but "Mr Parker and Zia" and "Rapture", still pending from the owner).
+
+## Reservation emails (Netlify Function + Resend)
+
+Added 2026-08-17, **not live yet** — needs a Resend API key before it does anything.
+
+When a guest submits `reserve.html`'s booking form, after the Firestore write succeeds `js/reserve.js` fires a fetch to `/.netlify/functions/send-reservation-emails` (fire-and-forget — a failed/unconfigured email call must never make a successful booking look failed; see the comments in both files). That function (`netlify/functions/send-reservation-emails.js`) sends two emails via [Resend](https://resend.com):
+- **Guest** — booking confirmation, sent to the email address they entered
+- **Staff** — booking alert, sent to `iolo@chipshopbxtn.co.uk` (hardcoded in the function, same pattern as the staff PIN email elsewhere in this app)
+
+**What's needed to go live:**
+1. Owner finishes signing up for Resend and verifies a sending domain (or use `onboarding@resend.dev` as a stopgap `from` address — only good for testing, not real guest email).
+2. Set two environment variables in the Netlify dashboard (Site settings → Environment variables) for the `chipshopbxtn` site:
+   - `RESEND_API_KEY` — required. Without it, the function returns a clean `500` (logged, doesn't throw) — the booking itself is unaffected either way.
+   - `RESEND_FROM_EMAIL` — optional, defaults to `Chip Shop Bxtn <reservations@chipshopbxtn.com>`. Only works once that domain (or address) is verified in Resend.
+3. Redeploy. Functions aren't included in the curated static deploy zip (`chip-shop-bxtn-deploy.zip`) — deploy them with an explicit `--functions` flag alongside `--dir`:
+   ```
+   netlify deploy --prod --dir=<extracted deploy folder> --functions=netlify/functions
+   ```
+   (or via `netlify deploy` draft + `netlify api restoreSiteDeploy`, the pattern used elsewhere in this project's deploy history — see git log).
+4. Do one real test booking end-to-end and confirm both emails land.
+
+`npm install` (run once, from the repo root) populates `node_modules/` so Netlify's bundler can trace and package the `resend` dependency — `node_modules/` itself isn't committed (see `.gitignore`).
 
 ## What's not in this MVP (possible next steps)
 

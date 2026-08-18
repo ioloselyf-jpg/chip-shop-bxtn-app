@@ -17,3 +17,7 @@ desktop.ini
 
 # Local Netlify folder
 .netlify
+
+# Node dependencies for netlify/functions/ — reinstalled via npm install,
+# not committed
+node_modules
