@@ -80,7 +80,7 @@ function render(djs) {
           ${next ? `<p class="hint">Next playing: ${escapeHtml(formatDjDate(next))}</p>` : ""}
           ${
             dj.instagram
-              ? `<a class="dj-instagram" href="${escapeHtml(dj.instagram)}" target="_blank" rel="noopener">${
+              ? `<a class="dj-link" href="${escapeHtml(dj.instagram)}" target="_blank" rel="noopener">${
                   dj.instagram.includes("instagram.com") ? "📷 Instagram" : "🔗 Links"
                 }</a>`
               : ""
