@@ -1,7 +1,0 @@
-# Static site — no build step. The site itself is deployed manually via
-# `netlify deploy --dir=<curated folder>` (see README "Deploy" section), but
-# this file tells the Netlify CLI/dashboard where Functions live so
-# `--functions` picks them up and so a dashboard-triggered deploy (if ever
-# set up later) would find them too.
-[functions]
-  directory = "netlify/functions"

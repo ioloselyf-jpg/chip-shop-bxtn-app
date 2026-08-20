@@ -15,9 +15,10 @@ desktop.ini
 *.log
 /tmp/
 
-# Local Netlify folder
+# Local Netlify folder (retained only in case old Netlify CLI state lingers
+# locally; the site no longer deploys to Netlify)
 .netlify
 
-# Node dependencies for netlify/functions/ — reinstalled via npm install,
-# not committed
+# Node dependencies — reinstalled via npm install, not committed. Only
+# cloudflare/send-reservation-emails/ has a package.json now.
 node_modules

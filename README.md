@@ -10,7 +10,9 @@ no App Store account or Mac required.
 3. **Table Reservations** — date/time/party-size booking with overbooking prevention against the real 80-cover capacity.
 
 Everything is static HTML/CSS/JS (no build step, no framework) using **Firebase**
-(Spark free tier) for auth, database, and hosting.
+(Spark free tier) for auth and database, hosted on **GitHub Pages**, with a
+small **Cloudflare Worker** for the one server-side piece (reservation
+confirmation emails).
 
 ---
 
@@ -142,27 +144,38 @@ three still need to reference the *same* address, not just the same casing.)
 ### 4. Get your web app config ✅ done
 Real values are already in [`js/firebase-config.js`](./js/firebase-config.js).
 
-### 5. Deploy the site somewhere free
-A ready-to-upload zip is kept at the repo root: `chip-shop-bxtn-deploy.zip`
-(rebuilt after every change — contains only the actual app files, no
-README/rules/dev config). Drag that file's *extracted contents* onto your
-host of choice, or drag the zip straight into Netlify's manual-deploy drop
-zone if it accepts zips directly.
+### 5. Deploy — GitHub Pages (automatic on every push)
 
-Pick **one** of these. Netlify is the simplest if you don't want to install anything.
+**Moved off Netlify 2026-08-19** (their free tier's operational credits ran
+out and paused production deploys). The site now deploys via
+`.github/workflows/deploy-pages.yml`, a GitHub Actions workflow that runs on
+every push to `master`: it stages the actual app files (same curation the
+old manual deploy zip used — no README/rules/dev config) into `_site/` and
+publishes that with `actions/deploy-pages`. No build step, no zip to
+rebuild by hand anymore.
 
-**Option A — Netlify (drag and drop, easiest)**
-1. Go to https://app.netlify.com, sign up free.
-2. **Add new site → Deploy manually**, then drag the whole project folder in.
-3. Netlify gives you a live URL immediately (e.g. `chip-shop-bxtn.netlify.app`). You can add a custom domain later in Site settings.
-4. Every time you edit files, drag the folder in again to redeploy (or connect it to a GitHub repo for auto-deploys — optional, ask if you want this set up).
+**One manual step needed the first time** (GitHub doesn't allow enabling
+this via a pushed file — it's a repo setting):
+1. On GitHub: **Settings → Pages → Build and deployment → Source**, set it
+   to **"GitHub Actions"** (not "Deploy from a branch").
+2. Push to `master` (or re-run the workflow from the **Actions** tab) — the
+   first run publishes the site and the Pages URL appears at the top of
+   **Settings → Pages** once it succeeds, typically
+   `https://ioloselyf-jpg.github.io/chip-shop-bxtn-app/`.
 
-**Option B — Firebase Hosting (keeps everything in one account)**
-1. Install the Firebase CLI (needs Node.js): `npm install -g firebase-tools`
-2. From this project folder: `firebase login`, then `firebase init hosting` (choose your existing project, set the public directory to `.`, configure as a single-page app: **No**, don't overwrite `index.html`).
-3. `firebase deploy --only hosting`
+All asset paths in this repo are relative (not root-absolute), specifically
+so the site works correctly under that `/chip-shop-bxtn-app/` subpath —
+see the note in `service-worker.js` if you're ever unsure why a path is
+written the way it is.
 
-Either way, **the site must be served over HTTPS** for the service worker and "Add to Home Screen" to work — both Netlify and Firebase Hosting give you HTTPS automatically.
+**Custom domain (optional, not set up):** if `chipshopbxtn.co.uk` DNS access
+ever becomes available, GitHub Pages supports a custom domain (Settings →
+Pages → Custom domain, plus a `CNAME`/`ALB` DNS record) — ask if you want
+this configured; it wasn't needed for the relative-path approach above to
+work, so it's a pure upgrade, not a requirement.
+
+**HTTPS**: GitHub Pages serves over HTTPS automatically (required for the
+service worker and "Add to Home Screen" to work), same as Netlify did.
 
 ### 6. Fill in the real business details — ✅ done
 `config/site-config.json` → `reservations.openingHours`, `capacityPerSlotCovers`
@@ -328,10 +341,8 @@ firestore.rules                      Firestore security rules (paste into Fireba
 icons/                                Real PWA icons, generated from the logo — see "Branding" above
 icons/logo.png                       Real logo (transparent bg), used in the app header
 icons/source/chipshop-logo.png       Original downloaded logo — regenerate icons from this if needed
-chip-shop-bxtn-deploy.zip            Ready-to-upload deploy bundle — see setup step 5
-netlify.toml                         Tells Netlify where Functions live (netlify/functions/)
-netlify/functions/send-reservation-emails.js   Guest confirmation + staff alert emails via SMTP — see "Reservation emails" below
-package.json / package-lock.json     Dependencies for netlify/functions/ only — the site itself has no build step
+.github/workflows/deploy-pages.yml    Deploys to GitHub Pages on every push to master — see setup step 5
+cloudflare/send-reservation-emails/   Cloudflare Worker: guest confirmation + staff alert emails via SMTP — see "Reservation emails" below
 ```
 
 ## Data model (Firestore)
@@ -343,11 +354,27 @@ package.json / package-lock.json     Dependencies for netlify/functions/ only �
 - `loyaltyEvents/{id}` — `{ customerId, customerName, type, staffEmail, stampsAfter, rewardsAfter, timestamp }` — one doc per stamp-add or redemption (`type` is `"stamp"` or `"redeem"`), written by `staff.js` inside the same transaction that updates the customer doc's counters. Append-only audit log — `firestore.rules` denies update/delete on this collection entirely. Powers the "Recent activity" list in the staff dashboard's Add Stamp panel.
 - `djs/{id}` — `{ name, bio, photoUrl, instagram, upcomingDates, order, active, updatedAt }` — `bio`/`photoUrl`/`instagram` are optional (null if unset), `upcomingDates` is an array of `"YYYY-MM-DD"` strings. `bio` is plain text with a **blank line between paragraphs** — `js/djs.js` splits on those into separate `<p>` tags (a single flat block reads as a wall of text otherwise); a lone `\n` within a paragraph becomes `<br>`. `instagram` holds any profile/link URL — rendered as "📷 Instagram" when the URL contains `instagram.com`, otherwise as a generic "🔗 Links" (e.g. a Linktree). **`photoUrl` is a plain string field, not a real upload** — there's no Firebase Storage integration in this app yet, so staff have to host the image somewhere else (e.g. a public image host) and paste the link in. Building real in-app image upload is a bigger separate task. Seeded with the real 12-DJ roster (names only) on 2026-08-16 — "DJ Croc" was in the original list but removed per an owner correction; "DJ Dave Lazy" and "DJ Outbreak" added in its place. Bios/photos/Instagram filled in for 10 of the 12 on 2026-08-17 (all but "Mr Parker and Zia" and "Rapture", still pending from the owner).
 
-## Reservation emails (Netlify Function + SMTP)
+## Reservation emails (Cloudflare Worker + SMTP)
 
 Added 2026-08-17, **not live yet** — needs the mailbox password before it does anything.
 
-When a guest submits `reserve.html`'s booking form, after the Firestore write succeeds `js/reserve.js` fires a fetch to `/.netlify/functions/send-reservation-emails` (fire-and-forget — a failed/unconfigured email call must never make a successful booking look failed; see the comments in both files). That function (`netlify/functions/send-reservation-emails.js`) sends two emails via SMTP, using [nodemailer](https://nodemailer.com):
+**Moved from a Netlify Function to a Cloudflare Worker on 2026-08-19**, as
+part of moving the whole site off Netlify onto GitHub Pages — GitHub Pages
+is static-only and can't run server-side code, so this piece needed
+somewhere else to live. The email-sending logic itself (SMTP provider,
+settings, credentials handling) is unchanged; only where it runs changed.
+See `cloudflare/send-reservation-emails/README.md` for full deploy/setup
+instructions — summary below.
+
+When a guest submits `reserve.html`'s booking form, after the Firestore
+write succeeds `js/reserve.js` fires a fetch to whatever URL is in
+`config/site-config.json` → `reservations.emailWorkerUrl` (fire-and-forget
+— a failed/unconfigured email call must never make a successful booking
+look failed; see the comments in both files). That's blank until the
+Worker is deployed, and `reserve.js` skips the call entirely when it's
+blank, so bookings work fine either way. Once deployed
+(`cloudflare/send-reservation-emails/`), it sends two emails via SMTP using
+[nodemailer](https://nodemailer.com):
 - **Guest** — booking confirmation, sent to the email address they entered
 - **Staff** — booking alert, sent to `iolo@chipshopbxtn.co.uk` (hardcoded in the function, same pattern as the staff PIN email elsewhere in this app)
 
@@ -360,20 +387,17 @@ When a guest submits `reserve.html`'s booking form, after the Firestore write su
 **No app-specific password support found for this product.** The underlying Open-Xchange platform (App Suite 7.10.4+) does support application-specific passwords as a general feature, but none of 123-reg's own "Professional Email" documentation mentions or exposes it — every official client-setup guide instructs using the main mailbox password directly. Worth the owner checking their webmail account's security settings just in case it's there but undocumented; otherwise, the real tradeoff is that this function will hold a full-access mailbox password, not a scoped-down credential.
 
 **What's needed to go live:**
-1. Get the mailbox password for `iolo@chipshopbxtn.co.uk` from the owner.
-2. Set environment variables in Netlify for the `chipshopbxtn` site (`netlify env:set NAME value`, or the dashboard):
+1. Deploy the Worker and get its URL — see `cloudflare/send-reservation-emails/README.md` steps 1–3 (needs a free Cloudflare account).
+2. Paste that URL into `config/site-config.json` → `reservations.emailWorkerUrl`, commit, push.
+3. Get the mailbox password for `iolo@chipshopbxtn.co.uk` from the owner.
+4. Set secrets on the Worker (`npx wrangler secret put SMTP_USER` / `SMTP_PASSWORD`, from inside `cloudflare/send-reservation-emails/`):
    - `SMTP_USER` — `iolo@chipshopbxtn.co.uk`
-   - `SMTP_PASSWORD` — the mailbox password. Required — without it (or `SMTP_USER`), the function returns a clean `500` (logged, doesn't throw); the booking itself is unaffected either way.
+   - `SMTP_PASSWORD` — the mailbox password. Required — without it (or `SMTP_USER`), the Worker returns a clean `500` (logged, doesn't throw); the booking itself is unaffected either way.
    - `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` — optional, default to the documented settings above.
    - `SMTP_FROM_EMAIL` — optional, defaults to `Chip Shop Bxtn <iolo@chipshopbxtn.co.uk>`.
-3. Redeploy. Functions aren't included in the curated static deploy zip (`chip-shop-bxtn-deploy.zip`) — deploy them with an explicit `--functions` flag alongside `--dir`:
-   ```
-   netlify deploy --prod --dir=<extracted deploy folder> --functions=netlify/functions
-   ```
-   (or via `netlify deploy` draft + `netlify api restoreSiteDeploy`, the pattern used elsewhere in this project's deploy history — see git log).
-4. Do one real test booking end-to-end and confirm both emails land.
+5. Do one real test booking end-to-end and confirm both emails land.
 
-`npm install` (run once, from the repo root) populates `node_modules/` so Netlify's bundler can trace and package the `nodemailer` dependency — `node_modules/` itself isn't committed (see `.gitignore`).
+`npm install`, run once from `cloudflare/send-reservation-emails/` (not the repo root — the site itself has no build step and there's no root `package.json` anymore), populates that folder's `node_modules/` so `wrangler deploy` can bundle the `nodemailer` dependency — `node_modules/` itself isn't committed (see `.gitignore`).
 
 ## What's not in this MVP (possible next steps)
 

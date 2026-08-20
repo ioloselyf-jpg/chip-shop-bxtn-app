@@ -197,14 +197,21 @@ form.addEventListener("submit", async (e) => {
 
     // Best-effort confirmation/alert emails — the booking above is already
     // committed and "confirmed" by this point. This call is fire-and-forget
-    // on purpose: a slow, down, or not-yet-configured email provider (no
-    // RESEND_API_KEY set yet, for instance) must never make a successful
-    // booking look like it failed.
-    fetch("/.netlify/functions/send-reservation-emails", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, email, phone, partySize, date, time, notes: notes || null })
-    }).catch((err) => console.error("Reservation email request failed:", err));
+    // on purpose: a slow, down, or not-yet-configured email provider must
+    // never make a successful booking look like it failed. Runs on a
+    // separate Cloudflare Worker (cross-origin from this static site) —
+    // see cloudflare/send-reservation-emails/. emailWorkerUrl is blank
+    // until that Worker is deployed and its URL is filled into
+    // config/site-config.json, so skip the call entirely rather than
+    // fetching an empty URL.
+    const emailWorkerUrl = config?.reservations?.emailWorkerUrl;
+    if (emailWorkerUrl) {
+      fetch(emailWorkerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, phone, partySize, date, time, notes: notes || null })
+      }).catch((err) => console.error("Reservation email request failed:", err));
+    }
   } catch (err) {
     console.error(err);
     if (err.message === "SLOT_FULL") {

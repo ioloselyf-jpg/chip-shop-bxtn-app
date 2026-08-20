@@ -18,10 +18,10 @@ setPersistence(auth, browserLocalPersistence).catch(() => {
 
 let configPromise = null;
 
-// Fetches /config/site-config.json once and caches it for the page's lifetime.
+// Fetches config/site-config.json once and caches it for the page's lifetime.
 export function loadSiteConfig() {
   if (!configPromise) {
-    configPromise = fetch("/config/site-config.json")
+    configPromise = fetch("config/site-config.json")
       .then((res) => {
         if (!res.ok) throw new Error("Could not load site-config.json");
         return res.json();

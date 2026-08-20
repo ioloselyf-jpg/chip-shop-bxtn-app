@@ -7,22 +7,21 @@
 // booking to the guest; reserve.js already treats this call as
 // fire-and-forget for that reason.
 //
+// Ported from netlify/functions/send-reservation-emails.js when the site
+// moved off Netlify to GitHub Pages (GitHub Pages is static-only and can't
+// run this) — logic is unchanged, only the request/response shape and the
+// addition of CORS (this now runs on a different origin than the site,
+// where it used to be same-origin under Netlify) are new.
+//
 // Sends via SMTP through the owner's real 123 Reg "Professional Email"
 // mailbox (Open-Xchange, iolo@chipshopbxtn.co.uk) rather than a third-party
 // ESP — no domain verification needed (that's unreachable for this owner,
 // who doesn't control the domain's DNS), since the mail is authenticated as
 // a real mailbox the receiving server already trusts.
 
-const nodemailer = require("nodemailer");
+import nodemailer from "nodemailer";
 
 const STAFF_EMAIL = "iolo@chipshopbxtn.co.uk";
-
-// 123 Reg "Professional Email" (Open-Xchange) documented settings:
-// smtpout.secureserver.net, port 465 with SSL/TLS (or 587/25 with SSL off —
-// not used here). Overridable via env vars in case that ever changes.
-const SMTP_HOST = process.env.SMTP_HOST || "smtpout.secureserver.net";
-const SMTP_PORT = Number(process.env.SMTP_PORT) || 465;
-const SMTP_SECURE = process.env.SMTP_SECURE ? process.env.SMTP_SECURE === "true" : SMTP_PORT === 465;
 
 const SHOP_ADDRESS = "378 Coldharbour Lane, Brixton, London SW9 8LF";
 const SHOP_PHONE = "020 7274 3350";
@@ -110,84 +109,98 @@ function staffEmailHtml(r) {
   </div>`;
 }
 
-function jsonResponse(statusCode, data) {
+function corsHeaders(env) {
   return {
-    statusCode,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
+    "Access-Control-Allow-Origin": env.ALLOWED_ORIGIN || "",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Vary": "Origin"
   };
 }
 
-exports.handler = async (event) => {
-  if (event.httpMethod !== "POST") {
-    return jsonResponse(405, { error: "Method not allowed" });
-  }
-
-  let payload;
-  try {
-    payload = JSON.parse(event.body || "{}");
-  } catch (err) {
-    return jsonResponse(400, { error: "Invalid JSON body" });
-  }
-
-  const { name, email, phone, partySize, date, time, notes } = payload;
-  if (!name || !email || !date || !time || !partySize) {
-    return jsonResponse(400, { error: "Missing required reservation fields (name, email, date, time, partySize)" });
-  }
-
-  // Fail clearly and cleanly if credentials aren't configured yet, rather
-  // than letting nodemailer blow up further down with a less obvious error.
-  // reserve.js ignores this response either way, so it's safe for this to
-  // 500 — the booking itself already succeeded before this function ran.
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPassword = process.env.SMTP_PASSWORD;
-  if (!smtpUser || !smtpPassword) {
-    console.error("SMTP_USER/SMTP_PASSWORD are not set — skipping reservation emails.");
-    return jsonResponse(500, { error: "Email sending is not configured (SMTP_USER/SMTP_PASSWORD missing)." });
-  }
-
-  const fromEmail = process.env.SMTP_FROM_EMAIL || `Chip Shop Bxtn <${smtpUser}>`;
-
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_SECURE,
-    auth: { user: smtpUser, pass: smtpPassword }
+function jsonResponse(statusCode, data, env) {
+  return new Response(JSON.stringify(data), {
+    status: statusCode,
+    headers: { "Content-Type": "application/json", ...corsHeaders(env) }
   });
+}
 
-  const reservation = { name, email, phone, partySize, date, time, notes };
+export default {
+  async fetch(request, env) {
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders(env) });
+    }
 
-  // nodemailer's sendMail() rejects its promise on failure (unlike some ESP
-  // SDKs that resolve-with-error instead) — a plain rejected/fulfilled
-  // check on Promise.allSettled is the correct and sufficient way to detect
-  // a failed send here.
-  const [guestResult, staffResult] = await Promise.allSettled([
-    transporter.sendMail({
-      from: fromEmail,
-      to: email,
-      subject: "Your table's booked — Chip Shop Bxtn",
-      html: guestEmailHtml(reservation)
-    }),
-    transporter.sendMail({
-      from: fromEmail,
-      to: STAFF_EMAIL,
-      subject: `New reservation: ${name}, party of ${partySize} — ${date}`,
-      html: staffEmailHtml(reservation)
-    })
-  ]);
+    if (request.method !== "POST") {
+      return jsonResponse(405, { error: "Method not allowed" }, env);
+    }
 
-  const guestOk = guestResult.status === "fulfilled";
-  const staffOk = staffResult.status === "fulfilled";
+    let payload;
+    try {
+      payload = await request.json();
+    } catch (err) {
+      return jsonResponse(400, { error: "Invalid JSON body" }, env);
+    }
 
-  if (!guestOk) console.error("Guest email failed:", guestResult.reason);
-  if (!staffOk) console.error("Staff email failed:", staffResult.reason);
+    const { name, email, phone, partySize, date, time, notes } = payload;
+    if (!name || !email || !date || !time || !partySize) {
+      return jsonResponse(400, { error: "Missing required reservation fields (name, email, date, time, partySize)" }, env);
+    }
 
-  if (!guestOk || !staffOk) {
-    return jsonResponse(207, { ok: guestOk || staffOk, guestEmailSent: guestOk, staffEmailSent: staffOk });
+    // Fail clearly and cleanly if credentials aren't configured yet, rather
+    // than letting nodemailer blow up further down with a less obvious error.
+    // reserve.js ignores this response either way, so it's safe for this to
+    // 500 — the booking itself already succeeded before this function ran.
+    const smtpUser = env.SMTP_USER;
+    const smtpPassword = env.SMTP_PASSWORD;
+    if (!smtpUser || !smtpPassword) {
+      console.error("SMTP_USER/SMTP_PASSWORD are not set — skipping reservation emails.");
+      return jsonResponse(500, { error: "Email sending is not configured (SMTP_USER/SMTP_PASSWORD missing)." }, env);
+    }
+
+    const smtpHost = env.SMTP_HOST || "smtpout.secureserver.net";
+    const smtpPort = Number(env.SMTP_PORT) || 465;
+    const smtpSecure = env.SMTP_SECURE ? env.SMTP_SECURE === "true" : smtpPort === 465;
+    const fromEmail = env.SMTP_FROM_EMAIL || `Chip Shop Bxtn <${smtpUser}>`;
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: { user: smtpUser, pass: smtpPassword }
+    });
+
+    const reservation = { name, email, phone, partySize, date, time, notes };
+
+    // nodemailer's sendMail() rejects its promise on failure (unlike some ESP
+    // SDKs that resolve-with-error instead) — a plain rejected/fulfilled
+    // check on Promise.allSettled is the correct and sufficient way to detect
+    // a failed send here.
+    const [guestResult, staffResult] = await Promise.allSettled([
+      transporter.sendMail({
+        from: fromEmail,
+        to: email,
+        subject: "Your table's booked — Chip Shop Bxtn",
+        html: guestEmailHtml(reservation)
+      }),
+      transporter.sendMail({
+        from: fromEmail,
+        to: STAFF_EMAIL,
+        subject: `New reservation: ${name}, party of ${partySize} — ${date}`,
+        html: staffEmailHtml(reservation)
+      })
+    ]);
+
+    const guestOk = guestResult.status === "fulfilled";
+    const staffOk = staffResult.status === "fulfilled";
+
+    if (!guestOk) console.error("Guest email failed:", guestResult.reason);
+    if (!staffOk) console.error("Staff email failed:", staffResult.reason);
+
+    if (!guestOk || !staffOk) {
+      return jsonResponse(207, { ok: guestOk || staffOk, guestEmailSent: guestOk, staffEmailSent: staffOk }, env);
+    }
+
+    return jsonResponse(200, { ok: true, guestEmailSent: true, staffEmailSent: true }, env);
   }
-
-  return jsonResponse(200, { ok: true, guestEmailSent: true, staffEmailSent: true });
 };
-
-// Exported for local testing only — Netlify only ever calls exports.handler.
-exports._internal = { formatDate, formatTime, guestEmailHtml, staffEmailHtml };

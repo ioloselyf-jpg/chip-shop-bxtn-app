@@ -38,7 +38,9 @@
     "maxPartySize": 20,
     "capacityPerSlotCovers": 80,
     "leadTimeMinutes": 30,
-    "maxAdvanceBookingDays": 30
+    "maxAdvanceBookingDays": 30,
+    "emailWorkerUrl_comment": "URL of the Cloudflare Worker that sends reservation confirmation/alert emails — see cloudflare/send-reservation-emails/README.md. Empty string until deployed; reserve.js skips the email call entirely when this is blank, so bookings work fine either way.",
+    "emailWorkerUrl": ""
   },
 
   "staff": {

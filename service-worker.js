@@ -1,47 +1,50 @@
 // Bump this whenever you deploy changes to shell files below — it forces
 // clients to fetch fresh copies instead of serving stale cached versions.
-const CACHE_VERSION = "v17";
+const CACHE_VERSION = "v18";
 const CACHE_NAME = `chip-shop-shell-${CACHE_VERSION}`;
 
+// Paths here are relative to this script's own location (self.location), not
+// site-root-absolute — this lets the app deploy under a subpath (e.g. GitHub
+// Pages' default /reponame/) without breaking the precache.
 const SHELL_FILES = [
-  "/index.html",
-  "/whats-on.html",
-  "/loyalty.html",
-  "/reserve.html",
-  "/about.html",
-  "/djs.html",
-  "/staff.html",
-  "/offline.html",
-  "/manifest.json",
-  "/css/style.css",
-  "/js/firebase-config.js",
-  "/js/firebase-init.js",
-  "/js/whats-on.js",
-  "/js/loyalty.js",
-  "/js/reserve.js",
-  "/js/staff.js",
-  "/js/djs.js",
-  "/config/site-config.json",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/apple-touch-icon.png",
-  "/icons/logo.png",
-  "/fonts/Anton-Regular.woff2",
-  "/images/hero-home.webp",
-  "/images/hero-whats-on.webp",
-  "/images/hero-loyalty.webp",
-  "/images/hero-reserve.webp",
-  "/images/djs/dj-shorty.jpg",
-  "/images/djs/jim-sharp.jpg",
-  "/images/djs/dj-wally-puma.jpg",
-  "/images/djs/dj-dave-lazy.jpg",
-  "/images/djs/dj-outbreak.jpg",
-  "/images/djs/unique-hastings.jpg",
-  "/images/djs/asian-hawk.jpg",
-  "/images/djs/fraggle.jpg",
-  "/images/djs/dj-rumz.jpg",
-  "/images/djs/rapture.png",
-  "/images/djs/zia.jpg"
+  "./index.html",
+  "./whats-on.html",
+  "./loyalty.html",
+  "./reserve.html",
+  "./about.html",
+  "./djs.html",
+  "./staff.html",
+  "./offline.html",
+  "./manifest.json",
+  "./css/style.css",
+  "./js/firebase-config.js",
+  "./js/firebase-init.js",
+  "./js/whats-on.js",
+  "./js/loyalty.js",
+  "./js/reserve.js",
+  "./js/staff.js",
+  "./js/djs.js",
+  "./config/site-config.json",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/apple-touch-icon.png",
+  "./icons/logo.png",
+  "./fonts/Anton-Regular.woff2",
+  "./images/hero-home.webp",
+  "./images/hero-whats-on.webp",
+  "./images/hero-loyalty.webp",
+  "./images/hero-reserve.webp",
+  "./images/djs/dj-shorty.jpg",
+  "./images/djs/jim-sharp.jpg",
+  "./images/djs/dj-wally-puma.jpg",
+  "./images/djs/dj-dave-lazy.jpg",
+  "./images/djs/dj-outbreak.jpg",
+  "./images/djs/unique-hastings.jpg",
+  "./images/djs/asian-hawk.jpg",
+  "./images/djs/fraggle.jpg",
+  "./images/djs/dj-rumz.jpg",
+  "./images/djs/rapture.png",
+  "./images/djs/zia.jpg"
 ];
 
 self.addEventListener("install", (event) => {
@@ -77,7 +80,7 @@ self.addEventListener("fetch", (event) => {
       .catch(async () => {
         const cached = await caches.match(request);
         if (cached) return cached;
-        if (request.mode === "navigate") return caches.match("/offline.html");
+        if (request.mode === "navigate") return caches.match("./offline.html");
         return Response.error();
       })
   );

@@ -1,0 +1,50 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deploy at a time; let an in-flight run finish rather than
+# cancelling it mid-upload.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # No build step — this is a static app. Stage only the actual site
+      # files into _site/, the same curation the old manual deploy zip used
+      # (no README, firestore.rules, cloudflare/ Worker source, or repo
+      # tooling files get published).
+      - name: Assemble site
+        run: |
+          set -e
+          mkdir -p _site
+          cp index.html whats-on.html loyalty.html reserve.html about.html djs.html staff.html offline.html manifest.json service-worker.js _site/
+          cp -r config css js icons images fonts _site/
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

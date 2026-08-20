@@ -1,0 +1,15 @@
+{
+  "name": "chip-shop-bxtn-reservation-emails",
+  "private": true,
+  "description": "Cloudflare Worker — sends reservation confirmation/alert emails via SMTP. Ported from the old Netlify Function of the same name (see git history) when the site moved to GitHub Pages.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  },
+  "dependencies": {
+    "nodemailer": "^9.0.5"
+  }
+}

@@ -6,19 +6,19 @@
 <title>Chip Shop Bxtn</title>
 <meta name="description" content="Weekly specials, loyalty stamp card, and table bookings for Chip Shop Bxtn." />
 
-<link rel="manifest" href="/manifest.json" />
+<link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#fb0000" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Chip Shop Bxtn" />
-<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-<link rel="icon" href="/icons/favicon.png" />
-<link rel="preload" as="image" href="/images/hero-home.webp" />
-<link rel="preload" as="font" href="/fonts/Anton-Regular.woff2" type="font/woff2" crossorigin />
-<link rel="stylesheet" href="/css/style.css" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="icon" href="icons/favicon.png" />
+<link rel="preload" as="image" href="images/hero-home.webp" />
+<link rel="preload" as="font" href="fonts/Anton-Regular.woff2" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-<div class="hero" style="background-image:url('/images/hero-home.webp');">
+<div class="hero" style="background-image:url('images/hero-home.webp');">
   <div class="halftone halftone--tl"></div>
   <div class="halftone halftone--br"></div>
   <span class="hero-badge" data-shop-name>Chip Shop Bxtn</span>
@@ -32,13 +32,13 @@
 <div class="torn-edge torn-edge--red"></div>
 <div class="torn-edge" style="margin-top:-6px;"></div>
 <nav class="site-nav">
-  <a class="site-nav-link current" href="/index.html">Home</a>
-  <a class="site-nav-link" href="/whats-on.html">What's On</a>
-  <a class="site-nav-link" href="/loyalty.html">Loyalty</a>
-  <a class="site-nav-link" href="/reserve.html">Reserve</a>
-  <a class="site-nav-link" href="/djs.html">Resident DJs</a>
-  <a class="site-nav-link" href="/about.html">About</a>
-  <a class="site-nav-link" href="/index.html#contact">Contact Us</a>
+  <a class="site-nav-link current" href="index.html">Home</a>
+  <a class="site-nav-link" href="whats-on.html">What's On</a>
+  <a class="site-nav-link" href="loyalty.html">Loyalty</a>
+  <a class="site-nav-link" href="reserve.html">Reserve</a>
+  <a class="site-nav-link" href="djs.html">Resident DJs</a>
+  <a class="site-nav-link" href="about.html">About</a>
+  <a class="site-nav-link" href="index.html#contact">Contact Us</a>
 </nav>
 
 <main>
@@ -49,21 +49,21 @@
   </div>
 
   <nav class="home-grid">
-    <a class="home-tile" href="/whats-on.html">
+    <a class="home-tile" href="whats-on.html">
       <span class="icon">📋</span>
       <span>
         <div class="title">What's On This Week</div>
         <div class="desc">Specials and events</div>
       </span>
     </a>
-    <a class="home-tile" href="/loyalty.html">
+    <a class="home-tile" href="loyalty.html">
       <span class="icon">🎟️</span>
       <span>
         <div class="title">Loyalty Card</div>
         <div class="desc">Collect stamps, earn a pint of Chip Shop Lager</div>
       </span>
     </a>
-    <a class="home-tile" href="/reserve.html">
+    <a class="home-tile" href="reserve.html">
       <span class="icon">📅</span>
       <span>
         <div class="title">Book a Table</div>
@@ -85,14 +85,14 @@
   </section>
 
   <p style="text-align:center; margin-top:24px;">
-    <a href="/staff.html" style="font-size:0.78rem; color:var(--color-muted);">Staff login</a>
+    <a href="staff.html" style="font-size:0.78rem; color:var(--color-muted);">Staff login</a>
   </p>
 </main>
 
 <footer class="app-footer">&copy; <span id="year"></span> Chip Shop Bxtn</footer>
 
 <script type="module">
-  import { db, applyTheme } from "/js/firebase-init.js";
+  import { db, applyTheme } from "./js/firebase-init.js";
   import { collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
   applyTheme();
@@ -106,7 +106,7 @@
   }
 
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/service-worker.js").catch(() => {});
+    navigator.serviceWorker.register("service-worker.js").catch(() => {});
   }
 
   // --- "Tonight at Chip Shop" banner ---------------------------------------
