@@ -354,9 +354,9 @@ cloudflare/send-reservation-emails/   Cloudflare Worker: guest confirmation + st
 - `loyaltyEvents/{id}` — `{ customerId, customerName, type, staffEmail, stampsAfter, rewardsAfter, timestamp }` — one doc per stamp-add or redemption (`type` is `"stamp"` or `"redeem"`), written by `staff.js` inside the same transaction that updates the customer doc's counters. Append-only audit log — `firestore.rules` denies update/delete on this collection entirely. Powers the "Recent activity" list in the staff dashboard's Add Stamp panel.
 - `djs/{id}` — `{ name, bio, photoUrl, instagram, upcomingDates, order, active, updatedAt }` — `bio`/`photoUrl`/`instagram` are optional (null if unset), `upcomingDates` is an array of `"YYYY-MM-DD"` strings. `bio` is plain text with a **blank line between paragraphs** — `js/djs.js` splits on those into separate `<p>` tags (a single flat block reads as a wall of text otherwise); a lone `\n` within a paragraph becomes `<br>`. `instagram` holds any profile/link URL — rendered as "📷 Instagram" when the URL contains `instagram.com`, otherwise as a generic "🔗 Links" (e.g. a Linktree). **`photoUrl` is a plain string field, not a real upload** — there's no Firebase Storage integration in this app yet, so staff have to host the image somewhere else (e.g. a public image host) and paste the link in. Building real in-app image upload is a bigger separate task. Seeded with the real 12-DJ roster (names only) on 2026-08-16 — "DJ Croc" was in the original list but removed per an owner correction; "DJ Dave Lazy" and "DJ Outbreak" added in its place. Bios/photos/Instagram filled in for 10 of the 12 on 2026-08-17 (all but "Mr Parker and Zia" and "Rapture", still pending from the owner).
 
-## Reservation emails (Cloudflare Worker + SendGrid)
+## Reservation emails (Cloudflare Worker + Brevo)
 
-Added 2026-08-17. Live as of 2026-08-20 (SendGrid), pending sender verification.
+Added 2026-08-17. Worker live since 2026-08-20; email sending pending Brevo sender verification.
 
 **Moved from a Netlify Function to a Cloudflare Worker on 2026-08-19**, as
 part of moving the whole site off Netlify onto GitHub Pages — GitHub Pages
@@ -375,19 +375,20 @@ blank, so bookings work fine either way. Once deployed
 - **Guest** — booking confirmation, sent to the email address they entered
 - **Staff** — booking alert, sent to `iolo@chipshopbxtn.co.uk` (hardcoded in the function, same pattern as the staff PIN email elsewhere in this app)
 
-**Provider history — three attempts, in order:**
+**Provider history — four attempts, in order:**
 1. **Resend** (2026-08-17) — needs a verified sending domain to reach real recipients, confirmed against Resend's own docs (no sandbox-without-domain option exists). The owner has no DNS access for `chipshopbxtn.co.uk`, so this was a hard stop.
 2. **Raw SMTP via nodemailer** (2026-08-18), through the owner's real 123 Reg "Professional Email" mailbox (`smtpout.secureserver.net:465`) — sidestepped the domain problem since it authenticates as a real mailbox instead of needing a verified sending domain. Worked as a Netlify Function. **Confirmed broken once ported to a Cloudflare Worker** (2026-08-20, verified live with `wrangler tail`): even with the `nodejs_compat` compatibility flag, the Worker's TCP-socket-backed net/tls layer couldn't resolve/connect to the SMTP host (`Failed to resolve IPv4 addresses with current network`, then `Connection timeout` on both sends, after a 120-second hang). Raw SMTP does not reliably work from a Cloudflare Worker.
-3. **SendGrid's HTTP API** (2026-08-20) — sidesteps the Workers/sockets problem entirely (plain `fetch()`, no raw sockets), and sidesteps the domain problem via **Single Sender Verification**: a one-time confirmation-link click sent to `iolo@chipshopbxtn.co.uk` (a mailbox the owner *does* control), no DNS involved. Once verified, that address can send to any recipient. Free tier, no card required. This is the current, working setup.
+3. **SendGrid's HTTP API** (2026-08-20) — sidestepped the Workers/sockets problem entirely (plain `fetch()`, no raw sockets), and sidestepped the domain problem via Single Sender Verification (a confirmation-link click sent to `iolo@chipshopbxtn.co.uk`, no DNS involved). Worked, but **dropped before going live** the same day on discovering SendGrid no longer has a permanent free tier — new accounts get a 60-day trial (ending 2026-10-20), then $19.95/mo minimum, not worth it for ~2 emails per booking. No API key was ever created for it, so nothing needed cleaning up there.
+4. **Brevo's HTTP API** (2026-08-21, current) — same shape as SendGrid: an HTTP API, and Single Sender Verification (a code emailed to `iolo@chipshopbxtn.co.uk`, no DNS involved — confirmed against Brevo's own docs, which explicitly list Single Sender Verification and full domain authentication as *alternatives*, not sequential steps). Genuine permanent free tier: 300 emails/day, no expiry, no card required.
 
 **What's needed to go live:**
 1. Deploy the Worker and get its URL — see `cloudflare/send-reservation-emails/README.md` steps 1–3 (needs a free Cloudflare account). ✅ done 2026-08-20, live at `https://chip-shop-bxtn-reservation-emails.ioloselyf.workers.dev`.
 2. Paste that URL into `config/site-config.json` → `reservations.emailWorkerUrl`, commit, push. ✅ done 2026-08-20.
-3. Set up SendGrid and verify `iolo@chipshopbxtn.co.uk` as a Single Sender — see `cloudflare/send-reservation-emails/README.md` step 5 for exact dashboard steps.
-4. Set the API key as a Worker secret (`npx wrangler secret put SENDGRID_API_KEY`, from inside `cloudflare/send-reservation-emails/`) — required; without it the Worker returns a clean `500` (logged, doesn't throw), and the booking itself is unaffected either way.
+3. Set up Brevo and verify `iolo@chipshopbxtn.co.uk` as a Single Sender — see `cloudflare/send-reservation-emails/README.md` step 5 for exact dashboard steps.
+4. Set the API key as a Worker secret (`npx wrangler secret put BREVO_API_KEY`, from inside `cloudflare/send-reservation-emails/`) — required; without it the Worker returns a clean `500` (logged, doesn't throw), and the booking itself is unaffected either way.
 5. Do one real test booking end-to-end and confirm both emails land.
 
-`npm install`, run once from `cloudflare/send-reservation-emails/` (not the repo root — the site itself has no build step and there's no root `package.json` anymore), populates that folder's `node_modules/` so `wrangler deploy` can bundle the `nodemailer` dependency — `node_modules/` itself isn't committed (see `.gitignore`).
+`npm install`, run once from `cloudflare/send-reservation-emails/` (not the repo root — the site itself has no build step and there's no root `package.json` anymore), only installs `wrangler` (a dev dependency) — the Worker itself has zero runtime dependencies, since it's a plain `fetch()` call to Brevo's API rather than an SDK or SMTP library.
 
 ## What's not in this MVP (possible next steps)
 

@@ -1,7 +1,7 @@
 {
   "name": "chip-shop-bxtn-reservation-emails",
   "private": true,
-  "description": "Cloudflare Worker — sends reservation confirmation/alert emails via SendGrid's HTTP API. Ported from the old Netlify Function of the same name (see git history) when the site moved to GitHub Pages; switched from raw SMTP to SendGrid after confirming SMTP doesn't work reliably from a Worker.",
+  "description": "Cloudflare Worker — sends reservation confirmation/alert emails via Brevo's HTTP API. Ported from the old Netlify Function of the same name (see git history) when the site moved to GitHub Pages; tried raw SMTP (doesn't work reliably from a Worker) then SendGrid (lost its permanent free tier) before landing on Brevo.",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"

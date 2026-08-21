@@ -2,7 +2,7 @@
 // is made. Called by js/reserve.js via fetch() right after the Firestore
 // write succeeds — this is a best-effort layer on top of that write, not a
 // replacement for it. The reservation is already "confirmed" in Firestore
-// by the time this runs, so a failure here (missing API key, SendGrid being
+// by the time this runs, so a failure here (missing API key, Brevo being
 // down, a bad address) must never look like a failed booking to the guest;
 // reserve.js already treats this call as fire-and-forget for that reason.
 //
@@ -10,24 +10,27 @@
 // moved off Netlify to GitHub Pages (GitHub Pages is static-only and can't
 // run this).
 //
-// Sends via SendGrid's HTTP API (2026-08-20), not raw SMTP — raw SMTP via
-// nodemailer was tried first (matching the original Netlify function) but
-// confirmed broken on Cloudflare Workers: even with the nodejs_compat flag,
-// the TCP-socket-backed net/tls polyfill couldn't resolve/connect to
-// smtpout.secureserver.net from inside a Worker (verified live via
-// `wrangler tail`: "Failed to resolve IPv4 addresses with current network",
-// then "Connection timeout" on both sends). An HTTP API sidesteps that
-// entirely — it's a plain fetch(), no raw sockets involved.
-//
-// SendGrid over Resend specifically because Resend requires a *verified
-// domain* to send to arbitrary recipients (no way around it, confirmed
-// against Resend's own docs) — and the owner has no DNS access for
-// chipshopbxtn.co.uk, which is exactly the wall this project hit in
-// Resend's very first attempt (see README "Reservation emails" history).
-// SendGrid's Single Sender Verification only requires clicking a
-// confirmation link sent to iolo@chipshopbxtn.co.uk (a mailbox the owner
-// does control) — no DNS involved — and once verified, that address can
-// send to any recipient. Free tier, no card required to start.
+// Sends via Brevo's HTTP API (2026-08-21) — third provider for this feature,
+// see README "Reservation emails" history for the full story:
+//   1. Resend — needs a verified *domain* to send to arbitrary recipients,
+//      no way around it. No DNS access for chipshopbxtn.co.uk, hard stop.
+//   2. Raw SMTP via nodemailer, through the owner's real 123 Reg mailbox —
+//      worked on Netlify, confirmed BROKEN on Cloudflare Workers (verified
+//      live via `wrangler tail`: "Failed to resolve IPv4 addresses with
+//      current network", then "Connection timeout" on both sends, even
+//      with the nodejs_compat flag). Workers' sockets don't reliably do
+//      arbitrary outbound SMTP.
+//   3. SendGrid's HTTP API — worked (plain fetch(), no raw sockets, and
+//      Single Sender Verification sidesteps the domain-DNS wall). Dropped
+//      before going live because SendGrid killed its permanent free tier
+//      in 2025 — new accounts get a 60-day trial, then $19.95/mo minimum,
+//      not worth it for ~2 emails per booking.
+//   4. Brevo (current) — same shape as SendGrid (HTTP API, Single Sender
+//      Verification via a code emailed to iolo@chipshopbxtn.co.uk, no DNS
+//      needed — confirmed against Brevo's own docs: Single Sender
+//      Verification and full domain authentication are explicitly listed
+//      as *alternatives*, not sequential requirements). Genuine permanent
+//      free tier: 300 emails/day, no expiry, no card required.
 
 const STAFF_EMAIL = "iolo@chipshopbxtn.co.uk";
 
@@ -133,31 +136,33 @@ function jsonResponse(statusCode, data, env) {
   });
 }
 
-// Sends one email via SendGrid's v3 Mail Send API. Throws on any non-2xx
-// response (mirrors nodemailer's sendMail() rejecting on failure), so the
-// Promise.allSettled() call site below can tell guest/staff sends apart.
-async function sendViaSendGrid(env, { to, subject, html }) {
-  const fromEmail = env.SENDGRID_FROM_EMAIL || STAFF_EMAIL;
-  const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+// Sends one email via Brevo's transactional email API. Throws on any
+// non-2xx response (mirrors nodemailer's sendMail() rejecting on failure),
+// so the Promise.allSettled() call site below can tell guest/staff sends
+// apart. Success is 201, not 200 — res.ok covers both.
+async function sendViaBrevo(env, { to, subject, html }) {
+  const fromEmail = env.BREVO_FROM_EMAIL || STAFF_EMAIL;
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${env.SENDGRID_API_KEY}`,
-      "Content-Type": "application/json"
+      "api-key": env.BREVO_API_KEY,
+      "Content-Type": "application/json",
+      "Accept": "application/json"
     },
     body: JSON.stringify({
-      personalizations: [{ to: [{ email: to }] }],
-      from: { email: fromEmail, name: "Chip Shop Bxtn" },
+      sender: { email: fromEmail, name: "Chip Shop Bxtn" },
+      to: [{ email: to }],
       subject,
-      content: [{ type: "text/html", value: html }]
+      htmlContent: html
     })
   });
 
   if (!res.ok) {
-    // SendGrid returns a JSON {errors: [...]} body on failure — surface it
-    // so a bad/unverified sender or bad API key shows up clearly in
+    // Brevo returns a JSON {message, code} body on failure — surface it so
+    // a bad/unverified sender or bad API key shows up clearly in
     // `wrangler tail` instead of just "non-2xx response".
     const body = await res.text().catch(() => "");
-    throw new Error(`SendGrid ${res.status}: ${body}`);
+    throw new Error(`Brevo ${res.status}: ${body}`);
   }
 }
 
@@ -187,20 +192,20 @@ export default {
     // than letting the fetch below blow up with a less obvious error.
     // reserve.js ignores this response either way, so it's safe for this to
     // 500 — the booking itself already succeeded before this function ran.
-    if (!env.SENDGRID_API_KEY) {
-      console.error("SENDGRID_API_KEY is not set — skipping reservation emails.");
-      return jsonResponse(500, { error: "Email sending is not configured (SENDGRID_API_KEY missing)." }, env);
+    if (!env.BREVO_API_KEY) {
+      console.error("BREVO_API_KEY is not set — skipping reservation emails.");
+      return jsonResponse(500, { error: "Email sending is not configured (BREVO_API_KEY missing)." }, env);
     }
 
     const reservation = { name, email, phone, partySize, date, time, notes };
 
     const [guestResult, staffResult] = await Promise.allSettled([
-      sendViaSendGrid(env, {
+      sendViaBrevo(env, {
         to: email,
         subject: "Your table's booked — Chip Shop Bxtn",
         html: guestEmailHtml(reservation)
       }),
-      sendViaSendGrid(env, {
+      sendViaBrevo(env, {
         to: STAFF_EMAIL,
         subject: `New reservation: ${name}, party of ${partySize} — ${date}`,
         html: staffEmailHtml(reservation)
