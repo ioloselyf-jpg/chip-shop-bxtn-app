@@ -354,17 +354,15 @@ cloudflare/send-reservation-emails/   Cloudflare Worker: guest confirmation + st
 - `loyaltyEvents/{id}` — `{ customerId, customerName, type, staffEmail, stampsAfter, rewardsAfter, timestamp }` — one doc per stamp-add or redemption (`type` is `"stamp"` or `"redeem"`), written by `staff.js` inside the same transaction that updates the customer doc's counters. Append-only audit log — `firestore.rules` denies update/delete on this collection entirely. Powers the "Recent activity" list in the staff dashboard's Add Stamp panel.
 - `djs/{id}` — `{ name, bio, photoUrl, instagram, upcomingDates, order, active, updatedAt }` — `bio`/`photoUrl`/`instagram` are optional (null if unset), `upcomingDates` is an array of `"YYYY-MM-DD"` strings. `bio` is plain text with a **blank line between paragraphs** — `js/djs.js` splits on those into separate `<p>` tags (a single flat block reads as a wall of text otherwise); a lone `\n` within a paragraph becomes `<br>`. `instagram` holds any profile/link URL — rendered as "📷 Instagram" when the URL contains `instagram.com`, otherwise as a generic "🔗 Links" (e.g. a Linktree). **`photoUrl` is a plain string field, not a real upload** — there's no Firebase Storage integration in this app yet, so staff have to host the image somewhere else (e.g. a public image host) and paste the link in. Building real in-app image upload is a bigger separate task. Seeded with the real 12-DJ roster (names only) on 2026-08-16 — "DJ Croc" was in the original list but removed per an owner correction; "DJ Dave Lazy" and "DJ Outbreak" added in its place. Bios/photos/Instagram filled in for 10 of the 12 on 2026-08-17 (all but "Mr Parker and Zia" and "Rapture", still pending from the owner).
 
-## Reservation emails (Cloudflare Worker + SMTP)
+## Reservation emails (Cloudflare Worker + SendGrid)
 
-Added 2026-08-17, **not live yet** — needs the mailbox password before it does anything.
+Added 2026-08-17. Live as of 2026-08-20 (SendGrid), pending sender verification.
 
 **Moved from a Netlify Function to a Cloudflare Worker on 2026-08-19**, as
 part of moving the whole site off Netlify onto GitHub Pages — GitHub Pages
 is static-only and can't run server-side code, so this piece needed
-somewhere else to live. The email-sending logic itself (SMTP provider,
-settings, credentials handling) is unchanged; only where it runs changed.
-See `cloudflare/send-reservation-emails/README.md` for full deploy/setup
-instructions — summary below.
+somewhere else to live. See `cloudflare/send-reservation-emails/README.md`
+for full deploy/setup instructions — summary below.
 
 When a guest submits `reserve.html`'s booking form, after the Firestore
 write succeeds `js/reserve.js` fires a fetch to whatever URL is in
@@ -373,28 +371,20 @@ write succeeds `js/reserve.js` fires a fetch to whatever URL is in
 look failed; see the comments in both files). That's blank until the
 Worker is deployed, and `reserve.js` skips the call entirely when it's
 blank, so bookings work fine either way. Once deployed
-(`cloudflare/send-reservation-emails/`), it sends two emails via SMTP using
-[nodemailer](https://nodemailer.com):
+(`cloudflare/send-reservation-emails/`), it sends two emails:
 - **Guest** — booking confirmation, sent to the email address they entered
 - **Staff** — booking alert, sent to `iolo@chipshopbxtn.co.uk` (hardcoded in the function, same pattern as the staff PIN email elsewhere in this app)
 
-**Originally built against [Resend](https://resend.com)** (2026-08-17), but that needs a verified sending domain to reach real recipients — the owner doesn't have DNS access for `chipshopbxtn.com`, and the account's API key (correctly scoped send-only) can't drive the domain-add flow either, and logging into the Resend dashboard requires credentials nobody here has. Switched to sending via SMTP through the owner's real mailbox instead (2026-08-18) — no domain verification needed, since the receiving server already trusts an authenticated real mailbox.
-
-**SMTP provider:** 123 Reg "Professional Email" (Open-Xchange, webmail at `eu1.myprofessionalmail.com`), mailbox `iolo@chipshopbxtn.co.uk`. Documented settings (confirmed against three independent official 123-reg support pages, then independently re-confirmed live: a real SMTP handshake against `smtpout.secureserver.net:465` with a deliberately wrong password came back with a clean `535 Authentication Failed` — not a connection error — proving the host/port/security are correct):
-- Host: `smtpout.secureserver.net`
-- Port: `465`, SSL/TLS (alternative: `587` or `25` with SSL off — not used here)
-
-**No app-specific password support found for this product.** The underlying Open-Xchange platform (App Suite 7.10.4+) does support application-specific passwords as a general feature, but none of 123-reg's own "Professional Email" documentation mentions or exposes it — every official client-setup guide instructs using the main mailbox password directly. Worth the owner checking their webmail account's security settings just in case it's there but undocumented; otherwise, the real tradeoff is that this function will hold a full-access mailbox password, not a scoped-down credential.
+**Provider history — three attempts, in order:**
+1. **Resend** (2026-08-17) — needs a verified sending domain to reach real recipients, confirmed against Resend's own docs (no sandbox-without-domain option exists). The owner has no DNS access for `chipshopbxtn.co.uk`, so this was a hard stop.
+2. **Raw SMTP via nodemailer** (2026-08-18), through the owner's real 123 Reg "Professional Email" mailbox (`smtpout.secureserver.net:465`) — sidestepped the domain problem since it authenticates as a real mailbox instead of needing a verified sending domain. Worked as a Netlify Function. **Confirmed broken once ported to a Cloudflare Worker** (2026-08-20, verified live with `wrangler tail`): even with the `nodejs_compat` compatibility flag, the Worker's TCP-socket-backed net/tls layer couldn't resolve/connect to the SMTP host (`Failed to resolve IPv4 addresses with current network`, then `Connection timeout` on both sends, after a 120-second hang). Raw SMTP does not reliably work from a Cloudflare Worker.
+3. **SendGrid's HTTP API** (2026-08-20) — sidesteps the Workers/sockets problem entirely (plain `fetch()`, no raw sockets), and sidesteps the domain problem via **Single Sender Verification**: a one-time confirmation-link click sent to `iolo@chipshopbxtn.co.uk` (a mailbox the owner *does* control), no DNS involved. Once verified, that address can send to any recipient. Free tier, no card required. This is the current, working setup.
 
 **What's needed to go live:**
-1. Deploy the Worker and get its URL — see `cloudflare/send-reservation-emails/README.md` steps 1–3 (needs a free Cloudflare account).
-2. Paste that URL into `config/site-config.json` → `reservations.emailWorkerUrl`, commit, push.
-3. Get the mailbox password for `iolo@chipshopbxtn.co.uk` from the owner.
-4. Set secrets on the Worker (`npx wrangler secret put SMTP_USER` / `SMTP_PASSWORD`, from inside `cloudflare/send-reservation-emails/`):
-   - `SMTP_USER` — `iolo@chipshopbxtn.co.uk`
-   - `SMTP_PASSWORD` — the mailbox password. Required — without it (or `SMTP_USER`), the Worker returns a clean `500` (logged, doesn't throw); the booking itself is unaffected either way.
-   - `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` — optional, default to the documented settings above.
-   - `SMTP_FROM_EMAIL` — optional, defaults to `Chip Shop Bxtn <iolo@chipshopbxtn.co.uk>`.
+1. Deploy the Worker and get its URL — see `cloudflare/send-reservation-emails/README.md` steps 1–3 (needs a free Cloudflare account). ✅ done 2026-08-20, live at `https://chip-shop-bxtn-reservation-emails.ioloselyf.workers.dev`.
+2. Paste that URL into `config/site-config.json` → `reservations.emailWorkerUrl`, commit, push. ✅ done 2026-08-20.
+3. Set up SendGrid and verify `iolo@chipshopbxtn.co.uk` as a Single Sender — see `cloudflare/send-reservation-emails/README.md` step 5 for exact dashboard steps.
+4. Set the API key as a Worker secret (`npx wrangler secret put SENDGRID_API_KEY`, from inside `cloudflare/send-reservation-emails/`) — required; without it the Worker returns a clean `500` (logged, doesn't throw), and the booking itself is unaffected either way.
 5. Do one real test booking end-to-end and confirm both emails land.
 
 `npm install`, run once from `cloudflare/send-reservation-emails/` (not the repo root — the site itself has no build step and there's no root `package.json` anymore), populates that folder's `node_modules/` so `wrangler deploy` can bundle the `nodemailer` dependency — `node_modules/` itself isn't committed (see `.gitignore`).

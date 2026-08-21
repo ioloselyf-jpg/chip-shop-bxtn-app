@@ -1,9 +1,6 @@
 name = "chip-shop-bxtn-reservation-emails"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
-# nodejs_compat is required for nodemailer — it needs Node's net/tls modules,
-# which Cloudflare backs with the Workers TCP Sockets API under this flag.
-compatibility_flags = ["nodejs_compat"]
 
 # Non-secret config. Override with `wrangler deploy --var NAME:value` or by
 # editing this file. Set to the exact origin (scheme + host, no path) that
@@ -13,7 +10,6 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ALLOWED_ORIGIN = "https://ioloselyf-jpg.github.io"
 
-# Secrets (SMTP_USER, SMTP_PASSWORD, and optionally SMTP_HOST/SMTP_PORT/
-# SMTP_SECURE/SMTP_FROM_EMAIL) are NOT set here — see README.md in this
-# folder. Set them with `wrangler secret put <NAME>` so they never land in
-# git or in this file.
+# Secrets (SENDGRID_API_KEY, and optionally SENDGRID_FROM_EMAIL) are NOT set
+# here — see README.md in this folder. Set them with
+# `wrangler secret put <NAME>` so they never land in git or in this file.

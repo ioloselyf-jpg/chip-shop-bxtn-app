@@ -2,24 +2,32 @@
 // is made. Called by js/reserve.js via fetch() right after the Firestore
 // write succeeds — this is a best-effort layer on top of that write, not a
 // replacement for it. The reservation is already "confirmed" in Firestore
-// by the time this runs, so a failure here (missing SMTP credentials, the
-// mailbox being unreachable, a bad address) must never look like a failed
-// booking to the guest; reserve.js already treats this call as
-// fire-and-forget for that reason.
+// by the time this runs, so a failure here (missing API key, SendGrid being
+// down, a bad address) must never look like a failed booking to the guest;
+// reserve.js already treats this call as fire-and-forget for that reason.
 //
 // Ported from netlify/functions/send-reservation-emails.js when the site
 // moved off Netlify to GitHub Pages (GitHub Pages is static-only and can't
-// run this) — logic is unchanged, only the request/response shape and the
-// addition of CORS (this now runs on a different origin than the site,
-// where it used to be same-origin under Netlify) are new.
+// run this).
 //
-// Sends via SMTP through the owner's real 123 Reg "Professional Email"
-// mailbox (Open-Xchange, iolo@chipshopbxtn.co.uk) rather than a third-party
-// ESP — no domain verification needed (that's unreachable for this owner,
-// who doesn't control the domain's DNS), since the mail is authenticated as
-// a real mailbox the receiving server already trusts.
-
-import nodemailer from "nodemailer";
+// Sends via SendGrid's HTTP API (2026-08-20), not raw SMTP — raw SMTP via
+// nodemailer was tried first (matching the original Netlify function) but
+// confirmed broken on Cloudflare Workers: even with the nodejs_compat flag,
+// the TCP-socket-backed net/tls polyfill couldn't resolve/connect to
+// smtpout.secureserver.net from inside a Worker (verified live via
+// `wrangler tail`: "Failed to resolve IPv4 addresses with current network",
+// then "Connection timeout" on both sends). An HTTP API sidesteps that
+// entirely — it's a plain fetch(), no raw sockets involved.
+//
+// SendGrid over Resend specifically because Resend requires a *verified
+// domain* to send to arbitrary recipients (no way around it, confirmed
+// against Resend's own docs) — and the owner has no DNS access for
+// chipshopbxtn.co.uk, which is exactly the wall this project hit in
+// Resend's very first attempt (see README "Reservation emails" history).
+// SendGrid's Single Sender Verification only requires clicking a
+// confirmation link sent to iolo@chipshopbxtn.co.uk (a mailbox the owner
+// does control) — no DNS involved — and once verified, that address can
+// send to any recipient. Free tier, no card required to start.
 
 const STAFF_EMAIL = "iolo@chipshopbxtn.co.uk";
 
@@ -125,6 +133,34 @@ function jsonResponse(statusCode, data, env) {
   });
 }
 
+// Sends one email via SendGrid's v3 Mail Send API. Throws on any non-2xx
+// response (mirrors nodemailer's sendMail() rejecting on failure), so the
+// Promise.allSettled() call site below can tell guest/staff sends apart.
+async function sendViaSendGrid(env, { to, subject, html }) {
+  const fromEmail = env.SENDGRID_FROM_EMAIL || STAFF_EMAIL;
+  const res = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${env.SENDGRID_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: fromEmail, name: "Chip Shop Bxtn" },
+      subject,
+      content: [{ type: "text/html", value: html }]
+    })
+  });
+
+  if (!res.ok) {
+    // SendGrid returns a JSON {errors: [...]} body on failure — surface it
+    // so a bad/unverified sender or bad API key shows up clearly in
+    // `wrangler tail` instead of just "non-2xx response".
+    const body = await res.text().catch(() => "");
+    throw new Error(`SendGrid ${res.status}: ${body}`);
+  }
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") {
@@ -147,44 +183,24 @@ export default {
       return jsonResponse(400, { error: "Missing required reservation fields (name, email, date, time, partySize)" }, env);
     }
 
-    // Fail clearly and cleanly if credentials aren't configured yet, rather
-    // than letting nodemailer blow up further down with a less obvious error.
+    // Fail clearly and cleanly if the API key isn't configured yet, rather
+    // than letting the fetch below blow up with a less obvious error.
     // reserve.js ignores this response either way, so it's safe for this to
     // 500 — the booking itself already succeeded before this function ran.
-    const smtpUser = env.SMTP_USER;
-    const smtpPassword = env.SMTP_PASSWORD;
-    if (!smtpUser || !smtpPassword) {
-      console.error("SMTP_USER/SMTP_PASSWORD are not set — skipping reservation emails.");
-      return jsonResponse(500, { error: "Email sending is not configured (SMTP_USER/SMTP_PASSWORD missing)." }, env);
+    if (!env.SENDGRID_API_KEY) {
+      console.error("SENDGRID_API_KEY is not set — skipping reservation emails.");
+      return jsonResponse(500, { error: "Email sending is not configured (SENDGRID_API_KEY missing)." }, env);
     }
-
-    const smtpHost = env.SMTP_HOST || "smtpout.secureserver.net";
-    const smtpPort = Number(env.SMTP_PORT) || 465;
-    const smtpSecure = env.SMTP_SECURE ? env.SMTP_SECURE === "true" : smtpPort === 465;
-    const fromEmail = env.SMTP_FROM_EMAIL || `Chip Shop Bxtn <${smtpUser}>`;
-
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpSecure,
-      auth: { user: smtpUser, pass: smtpPassword }
-    });
 
     const reservation = { name, email, phone, partySize, date, time, notes };
 
-    // nodemailer's sendMail() rejects its promise on failure (unlike some ESP
-    // SDKs that resolve-with-error instead) — a plain rejected/fulfilled
-    // check on Promise.allSettled is the correct and sufficient way to detect
-    // a failed send here.
     const [guestResult, staffResult] = await Promise.allSettled([
-      transporter.sendMail({
-        from: fromEmail,
+      sendViaSendGrid(env, {
         to: email,
         subject: "Your table's booked — Chip Shop Bxtn",
         html: guestEmailHtml(reservation)
       }),
-      transporter.sendMail({
-        from: fromEmail,
+      sendViaSendGrid(env, {
         to: STAFF_EMAIL,
         subject: `New reservation: ${name}, party of ${partySize} — ${date}`,
         html: staffEmailHtml(reservation)
